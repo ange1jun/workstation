@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+
+  # 1. 백엔드 서비스 (Java Spring Boot)
+  backend:
+    build:
+      context: ./backend # ⭐ 백엔드 소스 디렉토리 지정
+      dockerfile: Dockerfile
+    container_name: java-backend
+    ports:
+      - "8888:8888"
+    environment:
+      # DB 컨테이너 이름(mariadb)을 사용하여 접속
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/your_db
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+    depends_on:
+      - mariadb
+
+  # 2. 프론트엔드 서비스 (React + Nginx)
+  frontend:
+    build:
+      context: ./frontend # ⭐ 프론트엔드 소스 디렉토리 지정
+      dockerfile: Dockerfile
+    container_name: react-frontend
+    ports:
+      - "7777:80" # 호스트 3000번 포트로 연결 (Nginx 기본 포트 80)
+    depends_on:
+      - backend # API 서버가 준비된 후 프론트엔드 실행 (옵션)
+
+  # 3. 데이터베이스 서비스 (MariaDB)
+  mariadb:
+    image: mariadb:10.5
+    container_name: mariadb-db
+    environment:
+      MARIADB_ROOT_PASSWORD: root_password
+      MARIADB_DATABASE: your_db
+      MARIADB_USER: user
+      MARIADB_PASSWORD: password
+    volumes:
+      # DB 데이터를 호스트 컴퓨터의 data/db 폴더에 저장
+      - ./data/db:/var/lib/mysql
+    ports:
+      - "3307:3306" # (옵션) 호스트에서 DB에 직접 접속할 경우
+
+networks:
+  default:
