@@ -3,7 +3,7 @@ FROM node:20-alpine as builder
 WORKDIR /app
 
 # 빌드 인자 선언
-ARG VITE_API_URL=http://172.30.1.70:8889
+ARG VITE_API_URL=/api
 
 # 환경 변수로 설정
 ENV VITE_API_URL=$VITE_API_URL
