@@ -27,10 +27,10 @@ const ChevronUpIcon = ({ className }) => <svg className={className || "w-4 h-4"}
 const DocumentIcon = ({ className }) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
 
 // [API 주소]
-const API_CONTRACT_URL = 'http://api/contract';
-const API_COMPANY_URL = 'http://api/company';
-const API_CUSTOMER_URL = 'http://api/customer';
-const API_PARTNER_URL = 'http://api/partner';
+const API_CONTRACT_URL = '/api/contract';
+const API_COMPANY_URL = '/api/company';
+const API_CUSTOMER_URL = '/api/customer';
+const API_PARTNER_URL = '/api/partner';
 
 // --- 헬퍼 함수 ---
 const getCurrentDate = () => new Date().toISOString().split('T')[0];
