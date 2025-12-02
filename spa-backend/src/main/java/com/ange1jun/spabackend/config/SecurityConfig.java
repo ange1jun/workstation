@@ -3,11 +3,12 @@ package com.ange1jun.spabackend.config;
 import com.ange1jun.spabackend.security.JwtAuthenticationFilter;
 import com.ange1jun.spabackend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value; // [추가]
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,8 +18,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays; // [추가]
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -27,21 +29,21 @@ public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
 
-    // [수정] application.properties 또는 환경변수(CORS_ALLOWED_ORIGINS)에서 값을 가져옴
-    // 값이 없으면 기본값으로 로컬호스트 설정
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
+    // docker-compose.yml의 environment에서 값을 가져옵니다.
+    // 값이 없을 경우 기본값으로 localhost 설정
+    @Value("${cors.allowed-origins:http://localhost:7777}")
     private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .httpBasic(basic -> basic.disable())
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .httpBasic(AbstractHttpConfigurer::disable) // 기본 로그인 창 끄기
+                .csrf(AbstractHttpConfigurer::disable)      // CSRF 끄기 (REST API)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 설정 적용
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 안 씀 (JWT)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/**").permitAll() // /api/로 시작하는 모든 요청 허용 (로그인, 회원가입 등)
+                        .anyRequest().authenticated()           // 그 외 요청은 인증 필요
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
 
@@ -57,8 +59,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
 
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
