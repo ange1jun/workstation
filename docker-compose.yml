@@ -1,12 +1,10 @@
 version: '3.8'
 services:
-
-  # 1. 백엔드 서비스 (Java Spring Boot)
   backend:
     build:
       context: ./spa-backend
       dockerfile: Dockerfile
-    container_name: java-backend
+    container_name: java-backend  # ⭐ 이름 확인
     ports:
       - "8889:8889"
     environment:
@@ -17,21 +15,24 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8889/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
-  # 2. 프론트엔드 서비스 (React + Nginx)
   frontend:
     build:
       context: ./spa-workstation-front
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: /api
     container_name: react-frontend
     ports:
       - "7777:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
-  # 3. 데이터베이스 서비스 (MariaDB)
   mariadb:
     image: mariadb:10.5
     container_name: workstation_db
@@ -49,6 +50,3 @@ services:
       retries: 5
     ports:
       - "3307:3306"
-
-networks:
-  default:
