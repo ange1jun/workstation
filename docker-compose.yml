@@ -23,6 +23,8 @@ services:
     build:
       context: ./spa-workstation-front
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://backend:8889
     container_name: react-frontend
     ports:
       - "7777:80"

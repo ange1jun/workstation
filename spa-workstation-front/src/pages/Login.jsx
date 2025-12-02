@@ -38,7 +38,7 @@ const Login = () => {
 
         try {
             // 백엔드 통신 (포트 8080)
-            const response = await axios.post('http://172.30.1.70:8889/api/auth/login', {
+            const response = await axios.post('/api/auth/login', {
                 userId: loginData.userId,
                 password: loginData.password
             });
@@ -59,7 +59,7 @@ const Login = () => {
                 timer: 1500,
                 showConfirmButton: false
             }).then(() => {
-                navigate('/dashboard'); // 대시보드로 이동
+                navigate('/Employees'); // 대시보드로 이동
             });
 
         } catch (error) {
