@@ -4,7 +4,7 @@ services:
     build:
       context: ./spa-backend
       dockerfile: Dockerfile
-    container_name: java-backend  # ⭐ 이름 확인
+    container_name: java-backend
     ports:
       - "8889:8889"
     environment:
@@ -15,12 +15,13 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8889/actuator/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
+    # healthcheck 제거 (일단 주석처리)
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8889/actuator/health"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 40s
 
   frontend:
     build:
@@ -30,8 +31,7 @@ services:
     ports:
       - "7777:80"
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
 
   mariadb:
     image: mariadb:10.5
