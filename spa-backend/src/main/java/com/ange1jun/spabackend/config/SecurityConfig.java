@@ -29,8 +29,6 @@ public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
 
-    // docker-compose.yml의 environment에서 값을 가져옵니다.
-    // 값이 없을 경우 기본값으로 localhost 설정
     @Value("${cors.allowed-origins:http://localhost:7777}")
     private String allowedOrigins;
 
