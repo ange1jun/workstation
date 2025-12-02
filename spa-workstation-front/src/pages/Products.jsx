@@ -7,8 +7,8 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import TableLoader from '../components/TableLoader';
 
 // --- 백엔드 주소 ---
-const API_PRODUCT_URL = 'http://localhost:8889/api/product';
-const API_CONTRACT_URL = 'http://localhost:8889/api/contract';
+const API_PRODUCT_URL = 'http://api/product';
+const API_CONTRACT_URL = 'http://api/contract';
 
 // --- 아이콘 컴포넌트 ---
 const Icons = {
