@@ -11,10 +11,14 @@ import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Employees from './pages/Employees.jsx';
 import Customers from './pages/Customers';
-import Contracts from './pages/Contracts.jsx';
+import Partners from "./pages/Partners.jsx";
+import Sales from "./pages/Sales.jsx";
+import Products from "./pages/Products.jsx";
 import MainLayout from './components/MainLayout.jsx';
+import Contracts from "./pages/Contracts.jsx";
 
-// 2. 임시 페이지 컴포넌트
+
+// 임시 페이지 컴포넌트
 const PlaceholderPage = ({ title }) => (
     <Box>
         <Typography variant="h4" fontWeight="bold">{title}</Typography>
@@ -79,22 +83,16 @@ function App() {
                 >
                     <Routes>
                         <Route path="/" element={<Login />} />
-
                         <Route element={<MainLayout />}>
                             <Route path="/dashboard" element={<Dashboard />} />
-
                             <Route path="/employees" element={<Employees />} />
-
                             <Route path="/request" element={<PlaceholderPage title="작업 요청" />} />
-                            <Route path="/partners" element={<PlaceholderPage title="파트너 관리" />} />
-
+                            <Route path="/partners" element={<Partners />} />
                             <Route path="/customers" element={<Customers />} />
-
-                            <Route path="/sales" element={<PlaceholderPage title="영업 관리" />} />
-                            <Route path="/contracts" element={<Contracts title="계약 관리" />} />
-                            <Route path="/products" element={<PlaceholderPage title="제품 관리" />} />
+                            <Route path="/sales" element={<Sales />} />
+                            <Route path="/contracts" element={<Contracts/>} />
+                            <Route path="/products" element={<Products/>} />
                         </Route>
-
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </Box>

@@ -1,492 +1,592 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import axios from 'axios';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import Swal from 'sweetalert2';
 
-// --- 아이콘 컴포넌트 ---
-const PlusIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>;
+import TableLoader from '../components/TableLoader';
+
+
+// 아이콘 컴포넌트
+const PlusIcon = () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>;
 const XIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>;
-const SearchIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>;
-const TrashIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>;
+const SearchIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>;
+const TrashIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>;
 const ChevronDownIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>;
-const SettingsIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.941 3.31.81 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.81 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756 0 3.35a1.724 1.724 0 00-3.35 0c-.426-1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.941-3.31-.81-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.81-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065zM12 15a3 3 0 110-6 3 3 0 010 6z"></path></svg>;
+const DocumentIcon = ({ className }) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
 
+const API_CUSTOMER_URL = 'http://localhost:8889/api/customer';
+const API_COMPANY_URL = 'http://localhost:8889/api/company';
+
+// 페이지네이션 UI 컴포넌트
+const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    if (totalPages <= 1) return null;
+
+    const getPageNumbers = () => {
+        const pages = [];
+        let start = Math.max(1, currentPage - 2);
+        let end = Math.min(totalPages, start + 4);
+        if (end - start < 4) start = Math.max(1, end - 4);
+        for (let i = start; i <= end; i++) pages.push(i);
+        return pages;
+    };
+
+    return (
+        <div className="flex items-center justify-center gap-2 py-4 border-t border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-gray-500"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            {getPageNumbers().map(num => (
+                <button
+                    key={num}
+                    onClick={() => onPageChange(num)}
+                    className={`w-7 h-7 rounded-md text-xs font-medium transition-all ${
+                        currentPage === num
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'
+                    }`}
+                >
+                    {num}
+                </button>
+            ))}
+            <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-gray-500"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </button>
+        </div>
+    );
+};
 
 export default function Customers() {
     const [currentTab, setCurrentTab] = useState('customer');
     const [searchTerm, setSearchTerm] = useState('');
 
-    // --- 모달 Open 상태 ---
+    // --- 페이지네이션 ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // --- 상태 관리 ---
+    const [isLoading, setIsLoading] = useState(true);
     const [isCustomerRegOpen, setIsCustomerRegOpen] = useState(false);
     const [isCompanyRegOpen, setIsCompanyRegOpen] = useState(false);
-
-    // --- 선택된 데이터 (상세/수정용) ---
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [selectedCompany, setSelectedCompany] = useState(null);
     const [editingCustomer, setEditingCustomer] = useState(null);
     const [editingCompany, setEditingCompany] = useState(null);
-
-    // --- 폼 상태 ---
-    const [customerForm, setCustomerForm] = useState({
-        name: '', companyName: '', department: '', part: '', rank: '',
-        email: '', phone: '', mobile: '', memo: '', responsibilities: [],
-    });
-    const [companyForm, setCompanyForm] = useState({
-        name: '', regNo: '', rep: '', phone: '', address: '', email: '', memo: ''
-    });
+    const [companyList, setCompanyList] = useState([]);
+    const [customerList, setCustomerList] = useState([]);
+    const [customerForm, setCustomerForm] = useState({ name: '', companyName: '', department: '', part: '', position: '', email: '', phone: '', contact: '', memo: '', responsibilities: [] });
+    const [companyForm, setCompanyForm] = useState({ name: '', reg: '', phone: '', address: '', email: '', memo: '' });
     const [taskInput, setTaskInput] = useState('');
 
-    // --- 데이터 (더미) ---
-    const [companyList, setCompanyList] = useState([
-        { id: 1, name: '네이버', regNo: '123-45-67890', rep: '홍길동', tel: '031-123-4567', address: '경기도 성남시', email: 'contact@naver.com', memo: '주요 파트너' },
-        { id: 2, name: '카카오', regNo: '987-65-43210', rep: '임꺽정', tel: '031-987-6543', address: '제주도 제주시', email: 'contact@kakao.com', memo: '' },
-    ]);
-
-    const [customerList, setCustomerList] = useState([
-        { id: 1, name: '김철수', company: '네이버', dept: '개발팀', part: '백엔드', rank: '책임', email: 'cs.kim@naver.com', mobile: '010-1111-2222', responsibilities: ['API 설계', 'DB 최적화'], memo: '특이사항 없음' },
-        { id: 2, name: '이영희', company: '카카오', dept: '기획팀', part: '서비스기획', rank: '선임', email: 'yh.lee@kakao.com', mobile: '010-3333-4444', responsibilities: ['화면 기획'], memo: '' },
-    ]);
-
-    // --- 자동완성 데이터 ---
     const allUniqueTasks = useMemo(() => [...new Set(customerList.flatMap(c => c.responsibilities || []))], [customerList]);
 
-    // --- Effect: 상세 모달 열릴 때 편집용 state 초기화 ---
-    useEffect(() => { if (selectedCustomer) setEditingCustomer({ ...selectedCustomer }); }, [selectedCustomer]);
+    useEffect(() => {
+        fetchAllData();
+    }, []);
+
+    const fetchAllData = async () => {
+        setIsLoading(true);
+        try {
+            const [customers, companies, _] = await Promise.all([
+                axios.get(API_CUSTOMER_URL),
+                axios.get(API_COMPANY_URL),
+                new Promise(resolve => setTimeout(resolve, 1000))
+            ]);
+            setCustomerList(customers.data || []);
+            setCompanyList(companies.data || []);
+        } catch (error) {
+            console.error("데이터 로드 실패:", error);
+            // Swal 대체
+            window.alert('오류: 데이터를 불러오는데 실패했습니다.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        if (selectedCompany && selectedCompany.data) {
+        setCurrentPage(1);
+    }, [currentTab, searchTerm]);
+
+    const fetchCustomersOnly = async () => { try { const res = await axios.get(API_CUSTOMER_URL); setCustomerList(res.data || []); } catch (e) { console.error(e); } };
+    const fetchCompaniesOnly = async () => { try { const res = await axios.get(API_COMPANY_URL); setCompanyList(res.data || []); } catch (e) { console.error(e); } };
+
+
+    useEffect(() => {
+        if (selectedCustomer) {
+            let safeResponsibilities = [];
+            if (selectedCustomer.responsibilities) {
+                if (Array.isArray(selectedCustomer.responsibilities)) {
+                    safeResponsibilities = selectedCustomer.responsibilities;
+                } else if (typeof selectedCustomer.responsibilities === 'string') {
+                    safeResponsibilities = selectedCustomer.responsibilities.split(',').filter(item => item.trim() !== '');
+                }
+            }
+            setEditingCustomer({
+                ...selectedCustomer,
+                responsibilities: safeResponsibilities
+            });
+        }
+    }, [selectedCustomer]);
+
+    useEffect(() => {
+        if (selectedCompany?.data) {
             setEditingCompany({ ...selectedCompany.data });
         } else {
-            setEditingCompany(null); // 데이터가 없으면 null 처리
+            setEditingCompany(null);
         }
     }, [selectedCompany]);
 
-    // --- 필터링 ---
-    const filteredCustomers = customerList.filter(c => c.name.includes(searchTerm) || c.company.includes(searchTerm));
-    const filteredCompanies = companyList.filter(c => c.name.includes(searchTerm) || c.regNo.includes(searchTerm));
+    const filteredCustomers = customerList.filter(c => (c.name && c.name.includes(searchTerm)) || (c.company && c.company.includes(searchTerm)));
+    const filteredCompanies = companyList.filter(c => (c.name && c.name.includes(searchTerm)) || (c.reg && c.reg.includes(searchTerm)));
 
-    // ==========================================
-    //  핸들러
-    // ==========================================
-    const handleAddCustomerTask = (isEditing = false) => {
-        if (!taskInput.trim()) return;
-        const targetSet = isEditing ? setEditingCustomer : setCustomerForm;
-        targetSet(prev => ({ ...prev, responsibilities: [...prev.responsibilities, taskInput.trim()] }));
-        setTaskInput('');
+    const paginatedCustomers = filteredCustomers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const paginatedCompanies = filteredCompanies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const handleAddCustomerTask = (isEditing) => { if (!taskInput.trim()) return; const set = isEditing ? setEditingCustomer : setCustomerForm; set(p => ({ ...p, responsibilities: [...p.responsibilities, taskInput.trim()] })); setTaskInput(''); };
+    const handleRemoveCustomerTask = (i, isEditing) => { const set = isEditing ? setEditingCustomer : setCustomerForm; set(p => ({ ...p, responsibilities: p.responsibilities.filter((_, idx) => idx !== i) })); };
+    const handleCustomerRegChange = (e) => { const { name, value } = e.target; setCustomerForm(p => ({ ...p, [name]: value })); };
+    const handleCustomerSubmit = async () => {
+        if (!customerForm.companyName) { window.alert('경고: 고객사를 선택하세요.'); return; }
+        try {
+            const payload = { ...customerForm, company: customerForm.companyName, contact: customerForm.mobile, responsibilities: customerForm.responsibilities.join(',') };
+            await axios.post(API_CUSTOMER_URL, payload); fetchCustomersOnly(); setIsCustomerRegOpen(false);
+            setCustomerForm({ name: '', companyName: '', department: '', part: '', position: '', email: '', phone: '', contact: '', memo: '', responsibilities: [] });
+            window.alert('완료: 고객이 등록되었습니다.');
+        } catch { window.alert('오류: 등록 실패'); }
     };
-
-    const handleRemoveCustomerTask = (index, isEditing = false) => {
-        const targetSet = isEditing ? setEditingCustomer : setCustomerForm;
-        targetSet(prev => ({ ...prev, responsibilities: prev.responsibilities.filter((_, i) => i !== index) }));
+    const handleCompanyRegChange = (e) => { const { name, value } = e.target; setCompanyForm(p => ({ ...p, [name]: value })); };
+    const handleCompanySubmit = async () => {
+        try {
+            const payload = {
+                ...companyForm,
+                reg: companyForm.regNo,
+                tel: companyForm.phone,
+            };
+            await axios.post(API_COMPANY_URL, payload); fetchCompaniesOnly(); setIsCompanyRegOpen(false);
+            setCompanyForm({ name: '', regNo: '', phone: '', address: '', email: '', memo: '' });
+            window.alert('완료: 고객사가 등록되었습니다.');
+        } catch { window.alert('오류: 등록 실패'); }
     };
-
-    const handleCustomerRegChange = (e) => {
-        const { name, value } = e.target;
-        setCustomerForm(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleCustomerSubmit = () => {
-        if (!customerForm.companyName) { Swal.fire('입력 오류', '고객사를 선택해주세요.', 'warning'); return; }
-
-        setCustomerList([...customerList, { ...customerForm, id: Date.now(), company: customerForm.companyName }]);
-        setIsCustomerRegOpen(false);
-        setCustomerForm({ name: '', companyName: '', department: '', part: '', rank: '', email: '', phone: '', mobile: '', memo: '', responsibilities: [] });
-        Swal.fire({ icon: 'success', title: '등록 완료', text: '신규 고객이 등록되었습니다.', timer: 1500, showConfirmButton: false });
-    };
-
-    const handleCompanyRegChange = (e) => { const { name, value } = e.target; setCompanyForm(prev => ({ ...prev, [name]: value })); };
-    const handleCompanySubmit = () => {
-        setCompanyList([...companyList, {
-            ...companyForm,
-            id: Date.now(),
-            tel: companyForm.phone // phone의 값을 tel 필드에 복사
-        }]);
-
-        setIsCompanyRegOpen(false);
-        setCompanyForm({ name: '', regNo: '', rep: '', phone: '', address: '', email: '', memo: '' });
-        Swal.fire({ icon: 'success', title: '등록 완료', text: '신규 고객사가 등록되었습니다.', timer: 1500, showConfirmButton: false });
-    };
-
-    const handleEditCustomerChange = (e) => { const { name, value } = e.target; setEditingCustomer(prev => ({ ...prev, [name]: value })); };
-
-    const handleUpdateCustomer = () => {
-        Swal.fire({
-            title: '수정하시겠습니까?', text: "입력한 정보로 갱신합니다.", icon: 'question',
-            showCancelButton: true, confirmButtonColor: '#3085d6', cancelButtonColor: '#d33', confirmButtonText: '수정', cancelButtonText: '취소'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                setCustomerList(prev => prev.map(c => c.id === editingCustomer.id ? editingCustomer : c));
-                setSelectedCustomer(null);
-                Swal.fire({ icon: 'success', title: '수정 완료', text: '성공적으로 수정되었습니다.', timer: 1500, showConfirmButton: false });
-            }
-        });
-    };
-
-    const handleDeleteCustomer = () => {
-        Swal.fire({
-            title: '정말 삭제하시겠습니까?', text: "복구할 수 없습니다.", icon: 'warning',
-            showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: '삭제', cancelButtonText: '취소'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                setCustomerList(prev => prev.filter(c => c.id !== editingCustomer.id));
-                setSelectedCustomer(null);
-                Swal.fire({ icon: 'success', title: '삭제 완료', text: '삭제되었습니다.', timer: 1500, showConfirmButton: false });
-            }
-        });
-    };
-
-    const handleEditCompanyChange = (e) => { const { name, value } = e.target; setEditingCompany(prev => ({ ...prev, [name]: value })); };
-
-    const handleUpdateCompany = () => {
-        Swal.fire({
-            title: '수정하시겠습니까?', icon: 'question',
-            showCancelButton: true, confirmButtonColor: '#3085d6', cancelButtonColor: '#d33', confirmButtonText: '수정', cancelButtonText: '취소'
-        }).then((res) => {
-            if (res.isConfirmed) {
-                setCompanyList(prev => prev.map(c => c.id === editingCompany.id ? editingCompany : c));
-                setSelectedCompany(null);
-                Swal.fire({ icon: 'success', title: '수정 완료', text: '성공적으로 수정되었습니다.', timer: 1500, showConfirmButton: false });
-            }
-        });
-    };
-
-    const handleDeleteCompany = () => {
-        Swal.fire({
-            title: '삭제하시겠습니까?', icon: 'warning',
-            showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: '삭제', cancelButtonText: '취소'
-        }).then((res) => {
-            if (res.isConfirmed) {
-                setCompanyList(prev => prev.filter(c => c.id !== editingCompany.id));
-                setSelectedCompany(null);
-                Swal.fire('삭제 완료', '삭제되었습니다.', 'success');
-            }
-        });
-    };
-
-    const handleCompanyLinkClick = (companyName) => {
-        const found = companyList.find(c => c.name === companyName);
-        if (found) {
-            setSelectedCompany({ data: found, mode: 'view' });
-        } else {
-            Swal.fire({ icon: 'error', title: '오류', text: '등록되지 않은 고객사 정보입니다.' });
+    const handleEditCustomerChange = (e) => { const { name, value } = e.target; setEditingCustomer(p => ({ ...p, [name]: value })); };
+    const handleUpdateCustomer = async () => {
+        try {
+            const payload = {
+                ...editingCustomer,
+                responsibilities: Array.isArray(editingCustomer.responsibilities)
+                    ? editingCustomer.responsibilities.join(', ')
+                    : editingCustomer.responsibilities
+            };
+            await axios.put(`${API_CUSTOMER_URL}/${editingCustomer.id}`, payload);
+            fetchCustomersOnly();
+            setSelectedCustomer(null);
+            window.alert('수정 완료: 고객 정보가 수정되었습니다.');
+        } catch (error) {
+            console.error("수정 실패:", error);
+            window.alert('오류: 수정 중 문제가 발생했습니다.');
         }
     };
+    const handleDeleteCustomer = async () => { if (window.confirm('삭제하시겠습니까?')) { try { await axios.delete(`${API_CUSTOMER_URL}/${editingCustomer.id}`); fetchCustomersOnly(); setSelectedCustomer(null); } catch { window.alert('오류: 삭제 실패'); } } };
+    const handleEditCompanyChange = (e) => { const { name, value } = e.target; setEditingCompany(p => ({ ...p, [name]: value })); };
+    const handleUpdateCompany = async () => {
+        try {
+            const payload = { ...editingCompany };
+            await axios.put(`${API_COMPANY_URL}/${editingCompany.id}`, payload);
+            fetchCompaniesOnly(); setSelectedCompany(null); window.alert('수정 완료: 고객사 정보가 수정되었습니다.');
+        } catch { window.alert('오류: 수정 실패'); }
+    };
+    const handleDeleteCompany = async () => { if (window.confirm('삭제하시겠습니까?')) { try { await axios.delete(`${API_COMPANY_URL}/${editingCompany.id}`); fetchCompaniesOnly(); setSelectedCompany(null); } catch { window.alert('오류: 삭제 실패'); } } };
+    const handleCompanyLinkClick = (name) => { const found = companyList.find(c => c.name === name); if (found) setSelectedCompany({ data: found, mode: 'view' }); else window.alert('오류: 해당 고객사 정보를 찾을 수 없습니다.'); };
 
-    // --- 스타일 ---
-    const inputStyle = "w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-colors";
-    const labelStyle = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
-    const modalContentStyle = "fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[650px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white dark:bg-slate-800 shadow-2xl focus:outline-none z-50 overflow-y-auto border border-gray-200 dark:border-slate-700 transition-colors";
+    const gradientStyle = { backgroundSize: '200% 200%', animation: 'moveGradient 3s ease infinite' };
+    const inputStyle = "w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-colors text-sm";
+    const labelStyle = "block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5";
+    const modalContentStyle = "fixed left-[50%] top-[10%] w-[90vw] max-w-[600px] translate-x-[-50%] rounded-2xl bg-white dark:bg-slate-800 shadow-2xl focus:outline-none z-50 overflow-hidden border border-gray-200 dark:border-slate-700 transition-all max-h-[85vh] flex flex-col";
 
     return (
         <Tooltip.Provider delayDuration={300}>
             <style>{`
-                .swal2-container {
-                    z-index: 99999 !important;
-                    pointer-events: auto !important;
-                }
+                @keyframes moveGradient { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } 
             `}</style>
 
-            <div className="p-8 max-w-7xl mx-auto min-h-screen text-gray-900 dark:text-gray-100 transition-colors duration-300">
-                <Tabs.Root value={currentTab} onValueChange={setCurrentTab}>
-                    {/* 상단 탭 */}
-                    <div className="flex justify-start items-end mb-4 pb-2 transition-colors">
-                        <Tabs.List className="flex gap-4">
-                            <Tabs.Trigger value="customer"
-                                          className="text-2xl font-bold pb-2 px-1 text-gray-400 dark:text-gray-500 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:border-b-4 data-[state=active]:border-blue-600 transition-colors">고객
-                                관리</Tabs.Trigger>
-                            <Tabs.Trigger value="company"
-                                          className="text-2xl font-bold pb-2 px-1 text-gray-400 dark:text-gray-500 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:border-b-4 data-[state=active]:border-blue-600 transition-colors">고객사
-                                관리</Tabs.Trigger>
-                        </Tabs.List>
-                    </div>
+            <div className="p-6 max-w-7xl mx-auto min-h-screen text-gray-900 dark:text-gray-100 transition-colors duration-300">
+                <Tabs.Root value={currentTab} onValueChange={setCurrentTab} className="flex flex-col h-full">
 
-                    {/* 컨트롤 바 */}
-                    <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                        <div className="hidden md:block w-32"></div>
-                        <div className="relative w-full md:w-96">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <SearchIcon/></div>
-                            <input type="text"
-                                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-full bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors shadow-sm"
-                                   placeholder="검색 (고객명, 고객사)" value={searchTerm}
-                                   onChange={(e) => setSearchTerm(e.target.value)}/>
+                    {/* ====== 헤더 (레이아웃 수정: 1번 페이지와 동일하게 중앙 정렬) ====== */}
+                    <div className="relative flex items-center justify-center mb-8 h-12">
+
+                        {/* 1. 탭 (왼쪽 절대 위치) */}
+                        <div className="absolute left-0 h-11 z-10">
+                            <Tabs.List className="flex items-center gap-2 bg-gray-100 dark:bg-slate-800 rounded-lg p-1 h-full shadow-sm">
+                                <Tabs.Trigger value="customer" className="px-4 h-full flex items-center text-sm font-medium rounded-md transition-all outline-none data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">고객 관리</Tabs.Trigger>
+                                <Tabs.Trigger value="company" className="px-4 h-full flex items-center text-sm font-medium rounded-md transition-all outline-none data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">고객사 관리</Tabs.Trigger>
+                            </Tabs.List>
                         </div>
-                        <div className="w-full md:w-auto flex justify-end">
+
+                        {/* 2. 검색창 (가운데 정렬 - 1번 페이지와 동일한 사이즈/위치) */}
+                        <div className="relative w-full max-w-md group z-0 h-11">
+                            <div
+                                className="absolute -inset-[2px] rounded-lg bg-gradient-to-r
+
+                                from-neutral-500
+                                via-green-500
+                                to-cyan-500
+
+                                opacity-70 blur-sm transition duration-1000 group-hover:opacity-100 group-hover:duration-200"
+                                style={gradientStyle}></div>
+                            <div
+                                className="relative flex items-center bg-white dark:bg-slate-800 rounded-lg p-[1px] h-full">
+                                <svg className="absolute left-3 w-5 h-5 text-gray-400 pointer-events-none" fill="none"
+                                     stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                                <input type="text"
+                                       className="w-full pl-10 pr-4 h-full bg-transparent border-transparent rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-0 relative z-10"
+                                       placeholder={currentTab === 'customer' ? "고객명, 회사명 검색" : "고객사명, 사업자번호 검색"}
+                                       value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
+                            </div>
+                        </div>
+
+                        {/* 3. 등록 버튼 (오른쪽 절대 위치) */}
+                        <div className="absolute right-0 flex-shrink-0 z-10">
                             {currentTab === 'customer' ? (
                                 <button onClick={() => setIsCustomerRegOpen(true)}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm whitespace-nowrap">
-                                    <PlusIcon/> 고객 등록</button>
+                                        className="h-11 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors shadow-sm text-sm font-medium whitespace-nowrap">
+                                    <PlusIcon/> <span>고객 등록</span></button>
                             ) : (
                                 <button onClick={() => setIsCompanyRegOpen(true)}
-                                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm whitespace-nowrap">
-                                    <PlusIcon/> 고객사 등록</button>
+                                        className="h-11 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 transition-colors shadow-sm text-sm font-medium whitespace-nowrap">
+                                    <PlusIcon/> <span>고객사 등록</span></button>
                             )}
                         </div>
                     </div>
 
-                    {/* 메인 테이블 영역 */}
+                    {/* ====== 메인 테이블 영역 ====== */}
                     <div
-                        className="bg-transparent dark:bg-slate-800/50 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden transition-colors duration-300">
+                        className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 flex flex-col">
                         <Tabs.Content value="customer" className="outline-none">
-                            <table className="w-full text-left">
-                                {/* 헤더: 라이트 모드에서 투명 (bg-transparent) */}
-                                <thead
-                                    className="bg-transparent dark:bg-white/5 text-gray-700 dark:text-gray-400 uppercase text-sm font-bold border-b border-gray-200 dark:border-slate-700">
-                                <tr>
-                                    <th className="px-6 py-4">고객명</th>
-                                    <th className="px-6 py-4">고객사</th>
-                                    <th className="px-6 py-4">부서 / 파트</th>
-                                    <th className="px-6 py-4">직급</th>
-                                    <th className="px-6 py-4">이메일</th>
-                                    <th className="px-6 py-4">휴대폰번호</th>
-                                    <th className="px-6 py-4 text-center">관리</th>
-                                </tr>
-                                </thead>
-                                {/* 본문: 배경 투명, 디바이더 반투명 */}
-                                <tbody
-                                    className="divide-y divide-gray-200/50 dark:divide-slate-700/50 bg-transparent dark:bg-transparent">
-                                {filteredCustomers.map(customer => (
-                                    <tr key={customer.id}
-                                        className="hover:bg-gray-100/50 dark:hover:bg-white/10 transition-colors">
-                                        <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">{customer.name}</td>
-                                        <td className="px-6 py-4 font-medium">
-                                            <button onClick={() => handleCompanyLinkClick(customer.company)}
-                                                    className="text-blue-600 dark:text-blue-400 hover:underline focus:outline-none">{customer.company}</button>
-                                        </td>
-                                        {/* 부서/파트 병합 표시 */}
-                                        <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
-                                            {customer.department}
-                                            {customer.department && customer.part &&
-                                                <span className="mx-1 text-gray-400">/</span>}
-                                            {customer.part}
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{customer.rank}</td>
-                                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{customer.email}</td>
-                                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{customer.mobile || '-'}</td>
-                                        <td className="px-6 py-4 text-center">
-                                            <button
-                                                onClick={() => setSelectedCustomer(customer)}
-                                                className="p-1 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-slate-700"
-                                            >
-                                                <SettingsIcon className="w-5 h-5"/>
-                                            </button>
-                                        </td>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
+                                    <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-200">
+                                    <tr>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[15%] whitespace-nowrap">고객명</th>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[15%] whitespace-nowrap">고객사</th>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[15%] whitespace-nowrap">부서 / 파트</th>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[10%] whitespace-nowrap">직급</th>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[15%] whitespace-nowrap">이메일</th>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[15%] whitespace-nowrap">연락처</th>
+                                        <th className="px-6 py-4 text-sm font-semibold text-center w-[10%] whitespace-nowrap">관리</th>
                                     </tr>
-                                ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                                    {isLoading ? (
+                                        <TableLoader colSpan={7} />
+                                    ) : paginatedCustomers.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="8" className="px-6">
+                                                <div
+                                                    className="h-[60vh] flex flex-col items-center justify-center gap-4 text-gray-400 dark:text-gray-500">
+                                                    <div className="bg-gray-50 dark:bg-slate-700/50 p-6 rounded-full">
+                                                        {/* DocumentIcon을 크게 표시 */}
+                                                        <DocumentIcon className="w-10 h-10 opacity-50"/>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-lg font-medium text-gray-500 dark:text-gray-400">데이터가
+                                                            존재하지 않습니다.</p>
+                                                        <p className="text-sm text-gray-400 mt-1">새로운 고객, 고객사를 등록하거나 검색어를
+                                                            변경해보세요.</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        paginatedCustomers.map(c => (
+                                            <tr key={c.id}
+                                                className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                                                onClick={() => setSelectedCustomer(c)}>
+                                                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                    <div className="flex items-center gap-3">
+                                                        <div
+                                                            className="p-1.5 bg-blue-50 dark:bg-slate-700/50 rounded-full text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor"
+                                                                 viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round"
+                                                                      strokeWidth={2}
+                                                                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                                            </svg>
+                                                        </div>
+                                                        <div className="truncate min-w-0" title={c.name}>{c.name}</div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                                                    <button onClick={(e) => { e.stopPropagation(); handleCompanyLinkClick(c.company); }} className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-left truncate w-full block" title={c.company}>{c.company}</button>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 truncate" title={`${c.department || ''} ${c.part ? '/ ' + c.part : ''}`}>{c.department}{c.part && ` / ${c.part}`}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 truncate">{c.position}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 truncate" title={c.email}>{c.email}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 truncate">{c.contact || '-'}</td>
+                                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteCustomer(null, c.id); }} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><TrashIcon/></button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <Pagination totalItems={filteredCustomers.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
                         </Tabs.Content>
-                        <Tabs.Content value="company" className="outline-none">
-                            <table className="w-full text-left">
-                                <thead
-                                    className="bg-transparent dark:bg-white/5 text-gray-700 dark:text-gray-400 uppercase text-sm font-bold border-b border-gray-200 dark:border-slate-700">
-                                <tr>
-                                    <th className="px-6 py-4">고객사명</th>
-                                    <th className="px-6 py-4">사업자번호</th>
-                                    <th className="px-6 py-4">회계담당자</th>
-                                    <th className="px-6 py-4">대표전화</th>
-                                    <th className="px-6 py-4">이메일</th>
-                                    <th className="px-6 py-4 text-center">관리</th>
-                                </tr>
-                                </thead>
-                                <tbody
-                                    className="divide-y divide-gray-200/50 dark:divide-slate-700/50 bg-transparent dark:bg-transparent">
-                                {filteredCompanies.map(company => (
-                                    <tr key={company.id}
-                                        className="hover:bg-gray-100/50 dark:hover:bg-white/10 transition-colors">
-                                        <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">{company.name}</td>
-                                        <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{company.regNo}</td>
-                                        <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{company.rep}</td>
-                                        <td className="px-6 py-4 text-gray-800 dark:text-gray-300">{company.tel || '-'}</td>
-                                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{company.email}</td>
-                                        <td className="px-6 py-4 text-center">
-                                            <button onClick={() => setSelectedCompany({data: company, mode: 'edit'})}
-                                                    className="p-1 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-slate-700">
-                                                <SettingsIcon className="w-5 h-5"/>
-                                            </button>
-                                        </td>
+
+                        <Tabs.Content value="company" className="h-full outline-none">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
+                                    <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-200">
+                                    <tr>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[20%] whitespace-nowrap">고객사명</th>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[15%] whitespace-nowrap">사업자번호</th>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[15%] whitespace-nowrap">대표전화</th>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[20%] whitespace-nowrap">이메일</th>
+                                        <th className="px-6 py-4 text-sm font-semibold w-[20%] whitespace-nowrap">주소</th>
+                                        <th className="px-6 py-4 text-sm font-semibold text-center w-[10%] whitespace-nowrap">관리</th>
                                     </tr>
-                                ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                                    {isLoading ? (
+                                        <TableLoader colSpan={6} />
+                                    ) : paginatedCompanies.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="8" className="px-6">
+                                                <div
+                                                    className="h-[60vh] flex flex-col items-center justify-center gap-4 text-gray-400 dark:text-gray-500">
+                                                    <div className="bg-gray-50 dark:bg-slate-700/50 p-6 rounded-full">
+                                                        {/* DocumentIcon을 크게 표시 */}
+                                                        <DocumentIcon className="w-10 h-10 opacity-50"/>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-lg font-medium text-gray-500 dark:text-gray-400">데이터가
+                                                            존재하지 않습니다.</p>
+                                                        <p className="text-sm text-gray-400 mt-1">새로운 고객, 고객사를 등록하거나 검색어를
+                                                            변경해보세요.</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        paginatedCompanies.map(c => (
+                                            <tr key={c.id}
+                                                className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                                                onClick={() => setSelectedCompany({data: c, mode: 'edit'})}>
+                                                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
+                                                    title={c.name}>{c.name}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 truncate">{c.reg}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 truncate">{c.tel || '-'}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 truncate"
+                                                    title={c.email}>{c.email}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 truncate"
+                                                    title={c.address}>{c.address || '-'}</td>
+                                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteCompany(null, c.id); }} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><TrashIcon/></button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <Pagination totalItems={filteredCompanies.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
                         </Tabs.Content>
                     </div>
                 </Tabs.Root>
 
-                {/* ==================== 모달 영역 ==================== */}
-
-                {/* 1. 고객 등록 모달 */}
+                {/* --- 모달 영역 (기존 코드 유지) --- */}
+                {/* 1. 고객 등록 */}
                 <Dialog.Root open={isCustomerRegOpen} onOpenChange={setIsCustomerRegOpen}>
                     <Dialog.Portal>
                         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"/>
                         <Dialog.Content className={modalContentStyle}>
                             <div
-                                className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
-                                <Dialog.Title className="text-xl font-bold text-gray-800 dark:text-gray-100">신규 고객
-                                    등록</Dialog.Title>
+                                className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+                                <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">
+                                    신규 고객 등록</Dialog.Title>
                                 <Dialog.Close asChild>
-                                    <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                    <button
+                                        className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                                         <XIcon/></button>
                                 </Dialog.Close>
                             </div>
-                            <div className="p-6 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className={labelStyle}>고객명</label><input name="name"
-                                                                                         onChange={handleCustomerRegChange}
-                                                                                         className={inputStyle}/></div>
-                                    <div>
-                                        <label className={labelStyle}>고객사 (선택)</label>
+                            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                                <div className="grid grid-cols-12 gap-4">
+                                    <div className="col-span-6"><label className={labelStyle}>고객명</label><input
+                                        name="name" onChange={handleCustomerRegChange} className={inputStyle}/></div>
+                                    <div className="col-span-6"><label className={labelStyle}>고객사</label>
                                         <div className="relative">
                                             <select name="companyName" onChange={handleCustomerRegChange}
                                                     className={`${inputStyle} appearance-none pr-8`}
                                                     value={customerForm.companyName}>
-                                                <option value="">고객사 선택</option>
-                                                {companyList.map(comp => (
-                                                    <option key={comp.id} value={comp.name}>{comp.name}</option>))}
+                                                <option value="">선택</option>
+                                                {companyList.map(c => <option key={c.id}
+                                                                              value={c.name}>{c.name}</option>)}
                                             </select>
                                             <div
-                                                className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
-                                                <ChevronDownIcon/>
-                                            </div>
+                                                className="absolute right-0 top-0 h-full px-2 flex items-center pointer-events-none text-gray-500">
+                                                <ChevronDownIcon/></div>
                                         </div>
                                     </div>
-                                    {/* ⭐ 부서/파트 2개 입력 폼으로 분리 ⭐ */}
-                                    <div>
-                                        <label className={labelStyle}>부서 / 파트</label>
-                                        <div className="flex gap-2">
-                                            <input name="department" onChange={handleCustomerRegChange}
-                                                   className={inputStyle} placeholder="부서"/>
-                                            <input name="part" onChange={handleCustomerRegChange} className={inputStyle}
-                                                   placeholder="파트"/>
-                                        </div>
+                                    <div className="col-span-4"><label className={labelStyle}>부서</label><input
+                                        name="department" onChange={handleCustomerRegChange} className={inputStyle}/>
                                     </div>
-                                    <div><label className={labelStyle}>직급</label><input name="rank"
-                                                                                        onChange={handleCustomerRegChange}
-                                                                                        className={inputStyle}/></div>
-                                    <div><label className={labelStyle}>이메일</label><input name="email"
-                                                                                         onChange={handleCustomerRegChange}
-                                                                                         className={inputStyle}/></div>
-                                    <div><label className={labelStyle}>휴대폰</label><input name="mobile"
-                                                                                         onChange={handleCustomerRegChange}
-                                                                                         className={inputStyle}/></div>
+                                    <div className="col-span-4"><label className={labelStyle}>파트</label><input
+                                        name="part" onChange={handleCustomerRegChange} className={inputStyle}/></div>
+                                    <div className="col-span-4"><label className={labelStyle}>직급</label><input
+                                        name="position" onChange={handleCustomerRegChange} className={inputStyle}/>
+                                    </div>
+                                    <div className="col-span-6"><label className={labelStyle}>이메일</label><input
+                                        name="email" onChange={handleCustomerRegChange} className={inputStyle}/></div>
+                                    <div className="col-span-6"><label className={labelStyle}>연락처</label><input
+                                        name="contact" onChange={handleCustomerRegChange} className={inputStyle}/></div>
                                 </div>
-                                <div>
-                                    <label className={labelStyle}>담당 업무</label>
-                                    <div className="flex gap-2 mb-2">
-                                        <input list="task-suggestions" value={taskInput}
-                                               onChange={(e) => setTaskInput(e.target.value)} className={inputStyle}
-                                               placeholder="업무 입력"/>
-                                        <datalist id="task-suggestions">
-                                            {allUniqueTasks.map((task, i) => <option key={i} value={task}/>)}
-                                        </datalist>
+                                <div><label className={labelStyle}>담당 업무</label>
+                                    <div className="flex gap-2 mb-3">
+                                        <div className="relative flex-1"><input list="tasks" value={taskInput}
+                                                                                onChange={(e) => setTaskInput(e.target.value)}
+                                                                                className={`${inputStyle} w-full`}
+                                                                                placeholder="업무 입력 후 추가"/>
+                                            <datalist id="tasks">{allUniqueTasks.map((t, i) => <option key={i}
+                                                                                                       value={t}/>)}</datalist>
+                                        </div>
                                         <button onClick={() => handleAddCustomerTask(false)}
-                                                className="bg-blue-600 text-white px-4 rounded-lg whitespace-nowrap">추가
+                                                className="px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shrink-0">추가
                                         </button>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {customerForm.responsibilities.map((t, i) => (
-                                            <Tooltip.Root key={i}>
-                                                <Tooltip.Trigger asChild>
-                                                    <span
-                                                        className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm flex items-center gap-1 cursor-help">
-                                                        {t}
-                                                        <button onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleRemoveCustomerTask(i, false);
-                                                        }}><XIcon/></button>
-                                                    </span>
-                                                </Tooltip.Trigger>
-                                                <Tooltip.Portal>
-                                                    <Tooltip.Content className="z-[60] bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-md animate-in fade-in zoom-in-95" sideOffset={5}>
-                                                        {t}
-                                                        <Tooltip.Arrow className="fill-gray-900" />
-                                                    </Tooltip.Content>
-                                                </Tooltip.Portal>
-                                            </Tooltip.Root>
-                                        ))}
+                                    <div
+                                        className="flex flex-wrap gap-2 min-h-[40px] bg-gray-50 dark:bg-slate-900 rounded-lg p-2 border border-gray-100 dark:border-slate-700">
+                                        {customerForm.responsibilities.length === 0 &&
+                                            <span className="text-gray-400 text-xs self-center">추가된 업무가 없습니다.</span>}
+                                        {customerForm.responsibilities.map((t, i) => (<span key={i}
+                                                                                            className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-300 rounded-md text-xs flex items-center gap-1.5 shadow-sm">{t}
+                                            <button onClick={() => handleRemoveCustomerTask(i, false)}
+                                                    className="hover:text-red-500"><XIcon className="w-3 h-3"/></button></span>))}
                                     </div>
                                 </div>
-                                <div><label className={labelStyle}>메모</label><textarea name="memo" rows="3" onChange={handleCustomerRegChange} className={`${inputStyle} resize-none`}></textarea></div>
+                                <div><label className={labelStyle}>메모</label><textarea name="memo" rows="3"
+                                                                                       onChange={handleCustomerRegChange}
+                                                                                       className={`${inputStyle} resize-none`}></textarea>
+                                </div>
                             </div>
-                            <div className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-end gap-3">
-                                <Dialog.Close asChild><button className="px-4 py-2 text-gray-600 dark:text-gray-300">취소</button></Dialog.Close>
-                                <button onClick={handleCustomerSubmit} className="px-4 py-2 bg-blue-600 text-white rounded-lg">등록 완료</button>
+                            <div
+                                className="p-5 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex justify-end gap-3 mt-auto">
+                                <Dialog.Close asChild>
+                                    <button
+                                        className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">취소
+                                    </button>
+                                </Dialog.Close>
+                                <button onClick={handleCustomerSubmit}
+                                        className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm">등록하기
+                                </button>
                             </div>
                         </Dialog.Content>
                     </Dialog.Portal>
                 </Dialog.Root>
 
-                {/* 2. 고객 상세/수정 모달 */}
-                <Dialog.Root open={!!selectedCustomer} onOpenChange={(open) => !open && setSelectedCustomer(null)}>
+                {/* 2. 고객 수정 모달 */}
+                <Dialog.Root open={!!selectedCustomer} onOpenChange={(o) => !o && setSelectedCustomer(null)}>
                     <Dialog.Portal>
-                        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm" />
+                        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"/>
                         <Dialog.Content className={modalContentStyle}>
-                            <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
-                                <Dialog.Title className="text-xl font-bold text-gray-800 dark:text-gray-100">고객 정보 수정</Dialog.Title>
-                                <Dialog.Close asChild><button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><XIcon /></button></Dialog.Close>
+                            <div
+                                className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+                                <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">고객 정보
+                                    수정</Dialog.Title>
+                                <Dialog.Close asChild>
+                                    <button
+                                        className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                                        <XIcon/></button>
+                                </Dialog.Close>
                             </div>
                             {editingCustomer && (
-                                <div className="p-6 space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className={labelStyle}>고객명</label><input name="name" value={editingCustomer.name} onChange={handleEditCustomerChange} className={inputStyle} /></div>
-                                        <div>
-                                            <label className={labelStyle}>고객사</label>
-                                            <div className="relative">
-                                                <select name="company" value={editingCustomer.company} onChange={handleEditCustomerChange} className={`${inputStyle} appearance-none pr-8`}>
-                                                    <option value="">고객사 선택</option>
-                                                    {companyList.map(comp => (<option key={comp.id} value={comp.name}>{comp.name}</option>))}
-                                                </select>
-                                                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500"><ChevronDownIcon /></div>
-                                            </div>
-                                        </div>
-                                        {/* ⭐ 수정 모달: 부서/파트 분리 ⭐ */}
-                                        <div>
-                                            <label className={labelStyle}>부서 / 파트</label>
-                                            <div className="flex gap-2">
-                                                <input name="dept" value={editingCustomer.dept || ''} onChange={handleEditCustomerChange} className={inputStyle} placeholder="부서" />
-                                                <input name="part" value={editingCustomer.part || ''} onChange={handleEditCustomerChange} className={inputStyle} placeholder="파트" />
-                                            </div>
-                                        </div>
-                                        <div><label className={labelStyle}>직급</label><input name="rank" value={editingCustomer.rank || ''} onChange={handleEditCustomerChange} className={inputStyle} /></div>
-                                        <div><label className={labelStyle}>이메일</label><input name="email" value={editingCustomer.email || ''} onChange={handleEditCustomerChange} className={inputStyle} /></div>
-                                        <div><label className={labelStyle}>휴대폰</label><input name="mobile" value={editingCustomer.mobile || ''} onChange={handleEditCustomerChange} className={inputStyle} /></div>
+                                <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                                    <div className="grid grid-cols-12 gap-4">
+                                        <div className="col-span-6"><label className={labelStyle}>고객명</label><input
+                                            name="name" value={editingCustomer.name} onChange={handleEditCustomerChange}
+                                            className={inputStyle}/></div>
+                                        <div className="col-span-6"><label className={labelStyle}>고객사</label><select
+                                            name="company" value={editingCustomer.company}
+                                            onChange={handleEditCustomerChange} className={inputStyle}>
+                                            <option value="">선택</option>
+                                            {companyList.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                        </select></div>
+                                        <div className="col-span-4"><label className={labelStyle}>부서</label><input
+                                            name="department" value={editingCustomer.department || ''}
+                                            onChange={handleEditCustomerChange} className={inputStyle}/></div>
+                                        <div className="col-span-4"><label className={labelStyle}>파트</label><input
+                                            name="part" value={editingCustomer.part || ''}
+                                            onChange={handleEditCustomerChange} className={inputStyle}/></div>
+                                        <div className="col-span-4"><label className={labelStyle}>직급</label><input
+                                            name="position" value={editingCustomer.position || ''}
+                                            onChange={handleEditCustomerChange} className={inputStyle}/></div>
+                                        <div className="col-span-6"><label className={labelStyle}>이메일</label><input
+                                            name="email" value={editingCustomer.email || ''}
+                                            onChange={handleEditCustomerChange} className={inputStyle}/></div>
+                                        <div className="col-span-6"><label className={labelStyle}>연락처</label><input
+                                            name="contact" value={editingCustomer.contact || ''}
+                                            onChange={handleEditCustomerChange} className={inputStyle}/></div>
                                     </div>
-                                    <div>
-                                        <label className={labelStyle}>담당 업무</label>
-                                        <div className="flex gap-2 mb-2">
-                                            <input list="task-suggestions-edit" value={taskInput} onChange={(e) => setTaskInput(e.target.value)} className={inputStyle} placeholder="업무 추가" />
-                                            <datalist id="task-suggestions-edit">
-                                                {allUniqueTasks.map((task, i) => <option key={i} value={task} />)}
-                                            </datalist>
-                                            <button onClick={() => handleAddCustomerTask(true)} className="bg-blue-600 text-white px-4 rounded-lg whitespace-nowrap">추가</button>
+                                    <div><label className={labelStyle}>담당 업무</label>
+                                        <div className="flex gap-2 mb-3">
+                                            <div className="relative flex-1"><input list="tasks-edit" value={taskInput}
+                                                                                    onChange={(e) => setTaskInput(e.target.value)}
+                                                                                    className={`${inputStyle} w-full`}
+                                                                                    placeholder="업무 추가"/>
+                                                <datalist id="tasks-edit">{allUniqueTasks.map((t, i) => <option key={i}
+                                                                                                                value={t}/>)}</datalist>
+                                            </div>
+                                            <button onClick={() => handleAddCustomerTask(true)}
+                                                    className="px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shrink-0">추가
+                                            </button>
                                         </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {editingCustomer.responsibilities?.map((t, i) => (
-                                                <Tooltip.Root key={i}>
-                                                    <Tooltip.Trigger asChild>
-                                                        <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm flex items-center gap-1 cursor-help">
-                                                            {t} <button onClick={(e) => { e.stopPropagation(); handleRemoveCustomerTask(i, true); }}><XIcon /></button>
-                                                        </span>
-                                                    </Tooltip.Trigger>
-                                                    <Tooltip.Portal>
-                                                        <Tooltip.Content className="z-[60] bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-md animate-in fade-in zoom-in-95" sideOffset={5}>
-                                                            {t}
-                                                            <Tooltip.Arrow className="fill-gray-900" />
-                                                        </Tooltip.Content>
-                                                    </Tooltip.Portal>
-                                                </Tooltip.Root>
-                                            ))}
+                                        <div
+                                            className="flex flex-wrap gap-2 min-h-[40px] bg-gray-50 dark:bg-slate-900 rounded-lg p-2 border border-gray-100 dark:border-slate-700">
+                                            {(!editingCustomer.responsibilities || editingCustomer.responsibilities.length === 0) &&
+                                                <span
+                                                    className="text-gray-400 text-xs self-center">추가된 업무가 없습니다.</span>}
+                                            {editingCustomer.responsibilities?.map((t, i) => (<span key={i}
+                                                                                                    className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-300 rounded-md text-xs flex items-center gap-1.5 shadow-sm">{t}
+                                                <button onClick={() => handleRemoveCustomerTask(i, true)}
+                                                        className="hover:text-red-500"><XIcon
+                                                    className="w-3 h-3"/></button></span>))}
                                         </div>
                                     </div>
-                                    <div><label className={labelStyle}>메모</label><textarea name="memo" value={editingCustomer.memo || ''} onChange={handleEditCustomerChange} rows="3" className={`${inputStyle} resize-none`}></textarea></div>
+                                    <div><label className={labelStyle}>메모</label><textarea name="memo"
+                                                                                           value={editingCustomer.memo || ''}
+                                                                                           onChange={handleEditCustomerChange}
+                                                                                           rows="3"
+                                                                                           className={`${inputStyle} resize-none`}></textarea>
+                                    </div>
                                 </div>
                             )}
-                            <div className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-between gap-3">
-                                <button onClick={handleDeleteCustomer} className="px-4 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg flex items-center gap-1"><TrashIcon/> 삭제</button>
-                                <div className="flex gap-2">
-                                    <Dialog.Close asChild><button className="px-4 py-2 text-gray-600 dark:text-gray-300">취소</button></Dialog.Close>
-                                    <button onClick={handleUpdateCustomer} className="px-4 py-2 bg-blue-600 text-white rounded-lg">수정 완료</button>
+                            <div
+                                className="p-5 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex justify-between mt-auto">
+                                <button onClick={handleDeleteCustomer}
+                                        className="px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium shadow-sm">삭제
+                                </button>
+                                <div className="flex gap-3">
+                                    <Dialog.Close asChild>
+                                        <button
+                                            className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">취소
+                                        </button>
+                                    </Dialog.Close>
+                                    <button onClick={handleUpdateCustomer}
+                                            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm">저장하기
+                                    </button>
                                 </div>
                             </div>
                         </Dialog.Content>
@@ -496,69 +596,116 @@ export default function Customers() {
                 {/* 3. 고객사 등록 모달 */}
                 <Dialog.Root open={isCompanyRegOpen} onOpenChange={setIsCompanyRegOpen}>
                     <Dialog.Portal>
-                        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm" />
+                        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"/>
                         <Dialog.Content className={modalContentStyle}>
-                            <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
-                                <Dialog.Title className="text-xl font-bold text-gray-800 dark:text-gray-100">신규 고객사 등록</Dialog.Title>
-                                <Dialog.Close asChild><button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><XIcon /></button></Dialog.Close>
+                            <div
+                                className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+                                <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">신규 고객사
+                                    등록</Dialog.Title>
+                                <Dialog.Close asChild>
+                                    <button
+                                        className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                                        <XIcon/></button>
+                                </Dialog.Close>
                             </div>
-                            <div className="p-6 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="col-span-2"><label className={labelStyle}>고객사명</label><input name="name" onChange={handleCompanyRegChange} className={inputStyle} /></div>
-                                    <div><label className={labelStyle}>사업자번호</label><input name="regNo" onChange={handleCompanyRegChange} className={inputStyle} /></div>
-                                    <div><label className={labelStyle}>대표전화</label><input name="phone" onChange={handleCompanyRegChange} className={inputStyle} /></div>
-                                    <div><label className={labelStyle}>회계담당자</label><input name="rep" onChange={handleCompanyRegChange} className={inputStyle} /></div>
-                                    <div><label className={labelStyle}>이메일</label><input name="email" onChange={handleCompanyRegChange} className={inputStyle} /></div>
-                                    <div className="col-span-2"><label className={labelStyle}>주소</label><input name="address" onChange={handleCompanyRegChange} className={inputStyle} /></div>
+                            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                                <div className="grid grid-cols-12 gap-4">
+                                    <div className="col-span-12"><label className={labelStyle}>고객사명</label><input
+                                        name="name" onChange={handleCompanyRegChange} className={inputStyle}/></div>
+                                    <div className="col-span-6"><label className={labelStyle}>사업자번호</label><input
+                                        name="regNo" onChange={handleCompanyRegChange} className={inputStyle}/></div>
+                                    <div className="col-span-6"><label className={labelStyle}>대표전화</label><input
+                                        name="phone" onChange={handleCompanyRegChange} className={inputStyle}/></div>
+                                    <div className="col-span-12"><label className={labelStyle}>이메일</label><input
+                                        name="email" onChange={handleCompanyRegChange} className={inputStyle}/></div>
+                                    <div className="col-span-12"><label className={labelStyle}>주소</label><input
+                                        name="address" onChange={handleCompanyRegChange} className={inputStyle}/></div>
                                 </div>
-                                <div><label className={labelStyle}>메모</label><textarea name="memo" rows="3" onChange={handleCompanyRegChange} className={`${inputStyle} resize-none`}></textarea></div>
+                                <div><label className={labelStyle}>메모</label><textarea name="memo" rows="3"
+                                                                                       onChange={handleCompanyRegChange}
+                                                                                       className={`${inputStyle} resize-none`}></textarea>
+                                </div>
                             </div>
-                            <div className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-end gap-3">
-                                <Dialog.Close asChild><button className="px-4 py-2 text-gray-600 dark:text-gray-300">취소</button></Dialog.Close>
-                                <button onClick={handleCompanySubmit} className="px-4 py-2 bg-green-600 text-white rounded-lg">등록 완료</button>
+                            <div
+                                className="p-5 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex justify-end gap-3 mt-auto">
+                                <Dialog.Close asChild>
+                                    <button
+                                        className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">취소
+                                    </button>
+                                </Dialog.Close>
+                                <button onClick={handleCompanySubmit}
+                                        className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium shadow-sm">등록하기
+                                </button>
                             </div>
                         </Dialog.Content>
                     </Dialog.Portal>
                 </Dialog.Root>
 
-                {/* 4. 고객사 상세/수정 모달 */}
-                <Dialog.Root open={!!selectedCompany} onOpenChange={(open) => !open && setSelectedCompany(null)}>
+                {/* 4. 고객사 수정 모달 */}
+                <Dialog.Root open={!!selectedCompany} onOpenChange={(o) => !o && setSelectedCompany(null)}>
                     <Dialog.Portal>
-                        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm" />
+                        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"/>
                         <Dialog.Content className={modalContentStyle}>
-                            <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
-                                <Dialog.Title className="text-xl font-bold text-gray-800 dark:text-gray-100">고객사 정보 상세보기</Dialog.Title>
-                                <Dialog.Close asChild><button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><XIcon /></button></Dialog.Close>
+                            <div
+                                className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+                                <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">고객사
+                                    정보</Dialog.Title>
+                                <Dialog.Close asChild>
+                                    <button
+                                        className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                                        <XIcon/></button>
+                                </Dialog.Close>
                             </div>
                             {editingCompany && (
-                                <div className="p-6 space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="col-span-2"><label className={labelStyle}>고객사명</label><input name="name" value={editingCompany.name} onChange={handleEditCompanyChange} className={inputStyle} readOnly={selectedCompany?.mode === 'view'} /></div>
-                                        <div><label className={labelStyle}>사업자번호</label><input name="regNo" value={editingCompany.regNo} onChange={handleEditCompanyChange} className={inputStyle} readOnly={selectedCompany?.mode === 'view'} /></div>
-                                        <div><label className={labelStyle}>대표전화</label><input name="tel" value={editingCompany.tel} onChange={handleEditCompanyChange} className={inputStyle} readOnly={selectedCompany?.mode === 'view'} /></div>
-                                        <div><label className={labelStyle}>회계담당자</label><input name="rep" value={editingCompany.rep} onChange={handleEditCompanyChange} className={inputStyle} readOnly={selectedCompany?.mode === 'view'} /></div>
-                                        <div><label className={labelStyle}>이메일</label><input name="email" value={editingCompany.email} onChange={handleEditCompanyChange} className={inputStyle} readOnly={selectedCompany?.mode === 'view'} /></div>
-                                        <div className="col-span-2"><label className={labelStyle}>주소</label><input name="address" value={editingCompany.address} onChange={handleEditCompanyChange} className={inputStyle} readOnly={selectedCompany?.mode === 'view'} /></div>
+                                <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                                    <div className="grid grid-cols-12 gap-4">
+                                        <div className="col-span-12"><label className={labelStyle}>고객사명</label><input
+                                            name="name" value={editingCompany.name} onChange={handleEditCompanyChange}
+                                            className={inputStyle} readOnly={selectedCompany?.mode === 'view'}/></div>
+                                        <div className="col-span-6"><label className={labelStyle}>사업자번호</label><input
+                                            name="reg" value={editingCompany.reg} onChange={handleEditCompanyChange}
+                                            className={inputStyle} readOnly={selectedCompany?.mode === 'view'}/></div>
+                                        <div className="col-span-6"><label className={labelStyle}>대표전화</label><input
+                                            name="tel" value={editingCompany.tel} onChange={handleEditCompanyChange}
+                                            className={inputStyle} readOnly={selectedCompany?.mode === 'view'}/></div>
+                                        <div className="col-span-12"><label className={labelStyle}>이메일</label><input
+                                            name="email" value={editingCompany.email} onChange={handleEditCompanyChange}
+                                            className={inputStyle} readOnly={selectedCompany?.mode === 'view'}/></div>
+                                        <div className="col-span-12"><label className={labelStyle}>주소</label><input
+                                            name="address" value={editingCompany.address}
+                                            onChange={handleEditCompanyChange} className={inputStyle}
+                                            readOnly={selectedCompany?.mode === 'view'}/></div>
                                     </div>
-                                    <div><label className={labelStyle}>메모</label><textarea name="memo" value={editingCompany.memo} onChange={handleEditCompanyChange} rows="3" className={`${inputStyle} resize-none`} readOnly={selectedCompany?.mode === 'view'}></textarea></div>
+                                    <div><label className={labelStyle}>메모</label><textarea name="memo"
+                                                                                           value={editingCompany.memo}
+                                                                                           onChange={handleEditCompanyChange}
+                                                                                           rows="3"
+                                                                                           className={`${inputStyle} resize-none`}
+                                                                                           readOnly={selectedCompany?.mode === 'view'}></textarea>
+                                    </div>
                                 </div>
                             )}
-
-                            {/* ⭐ 푸터 버튼 조건부 렌더링 ⭐ */}
-                            <div className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-end gap-3">
+                            <div
+                                className="p-5 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex justify-end gap-3 mt-auto">
                                 {selectedCompany?.mode === 'edit' ? (
-                                    // EDIT Mode: 삭제, 취소, 수정 완료 버튼 표시
-                                    <div className="flex justify-between gap-3 w-full">
-                                        <button onClick={handleDeleteCompany} className="px-4 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg flex items-center gap-1"><TrashIcon/> 삭제</button>
-                                        <div className="flex gap-2">
-                                            <Dialog.Close asChild><button className="px-4 py-2 text-gray-600 dark:text-gray-300">취소</button></Dialog.Close>
-                                            <button onClick={handleUpdateCompany} className="px-4 py-2 bg-green-600 text-white rounded-lg">수정 완료</button>
-                                        </div>
-                                    </div>
+                                    <>
+                                        <button onClick={handleDeleteCompany}
+                                                className="px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium shadow-sm">삭제
+                                        </button>
+                                        <Dialog.Close asChild>
+                                            <button
+                                                className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">취소
+                                            </button>
+                                        </Dialog.Close>
+                                        <button onClick={handleUpdateCompany}
+                                                className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium shadow-sm">저장하기
+                                        </button>
+                                    </>
                                 ) : (
-                                    // VIEW Mode: 닫기 버튼만 표시
                                     <Dialog.Close asChild>
-                                        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg">닫기</button>
+                                        <button
+                                            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm">닫기
+                                        </button>
                                     </Dialog.Close>
                                 )}
                             </div>

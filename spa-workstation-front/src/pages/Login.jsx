@@ -1,20 +1,16 @@
-import React, { useState, useContext } from 'react'; // useContext 추가
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-// IconButton 추가
 import { Container, TextField, Button, Typography, Box, Paper, useTheme, IconButton } from '@mui/material';
-// 아이콘 추가
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-
-// Context import 수정 (확장자 제거)
 import { ColorModeContext } from '../context/ColorModeContext';
-
 import Swal from 'sweetalert2';
+import axios from 'axios'; // 1. axios 임포트 추가
 
 const Login = () => {
     const navigate = useNavigate();
     const theme = useTheme();
-    const colorMode = useContext(ColorModeContext); // [추가] 모드 변경 기능 가져오기
+    const colorMode = useContext(ColorModeContext);
 
     const [loginData, setLoginData] = useState({
         userId: '',
@@ -26,13 +22,57 @@ const Login = () => {
         setLoginData({ ...loginData, [name]: value });
     };
 
-    const handleLogin = (e) => {
+    // 2. 로그인 핸들러 수정 (async/await 적용)
+    const handleLogin = async (e) => {
         e.preventDefault();
-        if (loginData.userId) {
-            alert(`${loginData.userId}님 환영합니다.`);
-            navigate('/dashboard');
-        } else {
-            alert("아이디를 입력해주세요.");
+
+        // 유효성 검사
+        if (!loginData.userId || !loginData.password) {
+            Swal.fire({
+                icon: 'warning',
+                title: '입력 확인',
+                text: '아이디와 비밀번호를 모두 입력해주세요.'
+            });
+            return;
+        }
+
+        try {
+            // 백엔드 통신 (포트 8080)
+            const response = await axios.post('http://127.0.0.1:8889/api/auth/login', {
+                userId: loginData.userId,
+                password: loginData.password
+            });
+
+            // 3. 성공 시 처리
+            const { token } = response.data; // 백엔드에서 보낸 token 추출
+
+            // 토큰을 로컬 스토리지에 저장 (브라우저를 닫아도 유지됨)
+            localStorage.setItem('accessToken', token);
+
+            // 이후 요청 헤더에 토큰 자동 포함 설정 (선택 사항, 전역 설정 추천)
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+            Swal.fire({
+                icon: 'success',
+                title: '로그인 성공',
+                text: `${loginData.userId}님 환영합니다.`,
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                navigate('/dashboard'); // 대시보드로 이동
+            });
+
+        } catch (error) {
+            // 4. 실패 시 처리
+            console.error("Login Error:", error);
+
+            const errorMessage = error.response?.data || '접속 불가능합니다. 서버에 없는 계정입니다.';
+
+            Swal.fire({
+                icon: 'error',
+                title: 'warning',
+                text: typeof errorMessage === 'string' ? errorMessage : '서버 오류가 발생했습니다.'
+            });
         }
     };
 
