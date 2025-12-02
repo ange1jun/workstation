@@ -3,6 +3,7 @@ package com.ange1jun.spabackend.config;
 import com.ange1jun.spabackend.security.JwtAuthenticationFilter;
 import com.ange1jun.spabackend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value; // [추가]
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,14 +17,20 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays; // [추가]
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor // 1. 의존성 주입을 위해 추가
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtTokenProvider jwtTokenProvider; // 2. 토큰 제공자 주입
+    private final JwtTokenProvider jwtTokenProvider;
+
+    // [수정] application.properties 또는 환경변수(CORS_ALLOWED_ORIGINS)에서 값을 가져옴
+    // 값이 없으면 기본값으로 로컬호스트 설정
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
+    private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -33,8 +40,8 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").permitAll() // /api/로 시작하는 모든 요청 허용
-                        .anyRequest().authenticated()           // 그 외 요청은 인증 필요
+                        .requestMatchers("/api/**").permitAll()
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
 
@@ -49,11 +56,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173",     // Vite 로컬 주소
-                "http://127.0.0.1:5173"      // IP 주소로 접속할 경우 대비
-        ));
+
+        // [수정] 환경변수에서 가져온 문자열을 콤마로 쪼개서 리스트로 변환
+        // 예: "http://localhost:7777,http://172.30.1.70:7777" -> List<String>
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
