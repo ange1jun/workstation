@@ -27,6 +27,8 @@ services:
     depends_on:
       - backend
 
+
+
   mariadb:
     image: mariadb:10.5
     container_name: workstation_db
