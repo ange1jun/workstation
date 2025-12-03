@@ -23,7 +23,7 @@ spring:
   application:
     name: spa-backend
   profiles:
-    active: dev
+    active: prod
 
 server:
   port: 8889
