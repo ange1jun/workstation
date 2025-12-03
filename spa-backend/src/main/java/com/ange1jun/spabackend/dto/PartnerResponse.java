@@ -13,6 +13,8 @@ public class PartnerResponse {
     private String name;
     private String rep;
     private String tel;
+    private String position;
+    private String work_type;
     private String email;
     private String memo;
 
@@ -23,6 +25,8 @@ public class PartnerResponse {
                 partner.getName(),
                 partner.getRep(),
                 partner.getTel(),
+                partner.getPosition(),
+                partner.getWork_type(),
                 partner.getEmail(),
                 partner.getMemo()
         );

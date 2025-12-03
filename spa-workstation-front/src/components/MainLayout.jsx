@@ -26,12 +26,12 @@ import InfoIcon from '@mui/icons-material/Info';
 import WarningIcon from '@mui/icons-material/Warning';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import PersonIcon from '@mui/icons-material/Person';
+import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 
 import Swal from 'sweetalert2';
 import { ColorModeContext } from '../context/ColorModeContext.jsx';
 import RainbowLoader from '../components/RainbowLoader';
 
-// [수정] 펼쳐졌을 때 너비 줄임 (260 -> 200)
 const drawerWidth = 200;
 const headerHeight = 64;
 
@@ -286,12 +286,13 @@ const MainLayout = () => {
     };
 
     const menuItems = [
-        { text: '직원관리', icon: <BadgeIcon />, path: '/employees' },
-        { text: '파트너관리', icon: <HandshakeIcon />, path: '/partners' },
-        { text: '고객관리', icon: <PeopleIcon />, path: '/customers' },
-        { text: '영업관리', icon: <TrendingUpIcon />, path: '/sales' },
-        { text: '계약관리', icon: <DescriptionIcon />, path: '/contracts' },
-        { text: '제품관리', icon: <InventoryIcon />, path: '/products' },
+        { text: '직원 관리', icon: <BadgeIcon />, path: '/employees' },
+        { text: '파트너 관리', icon: <HandshakeIcon />, path: '/partners' },
+        { text: '고객 관리', icon: <PeopleIcon />, path: '/customers' },
+        { text: 'Work Flow', icon: <TrendingUpIcon />, path: '/sales' },
+        { text: '계약 관리', icon: <DescriptionIcon />, path: '/contracts' },
+        { text: '제품 관리', icon: <InventoryIcon />, path: '/products' },
+        { text: '차량 운행 일지', icon: <DirectionsCarIcon />, path: '/vehicle-log' },
     ];
 
     const currentTitle = useMemo(() => {

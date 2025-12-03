@@ -16,14 +16,13 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { Calendar as CalendarIcon } from 'lucide-react';
 
-// --- 아이콘 컴포넌트 (className을 받을 수 있도록 수정됨) ---
+// --- 아이콘 컴포넌트 ---
 const PlusIcon = ({ className }) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>;
 const XIcon = ({ className }) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>;
 const SearchIcon = ({ className }) => <svg className={className || "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>;
 const SettingsIcon = ({ className }) => <svg className={className || "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.941 3.31.81 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.81 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756 0 3.35a1.724 1.724 0 00-2.573-1.066c-1.543.941-3.31-.81-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.81-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065zM12 15a3 3 0 110-6 3 3 0 010 6z"></path></svg>;
 const ChevronDownIcon = ({ className }) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>;
 const ChevronUpIcon = ({ className }) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>;
-// DocumentIcon 수정: className을 받아 크기 조절 가능하게 변경
 const DocumentIcon = ({ className }) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
 
 // [API 주소]
@@ -177,12 +176,19 @@ export default function Contracts() {
             const data = JSON.parse(JSON.stringify(selectedContract));
             if (!data.items || !Array.isArray(data.items)) data.items = [];
             if (!data.main_contract) data.main_contract = '';
+
+            // 데이터 복구 로직 (하도급 업체명 누락 시 복구)
+            if (!data.sub_contractor && data.sub_contract) {
+                const foundPartner = partnerList.find(p => p.rep === data.sub_contract);
+                if (foundPartner) data.sub_contractor = foundPartner.name;
+            }
+
             setSelectedContractForm(data);
             setIsItemsExpanded(false);
         } else {
             setSelectedContractForm(null);
         }
-    }, [selectedContract]);
+    }, [selectedContract, partnerList]);
 
     const [newItem, setNewItem] = useState({ name: '', quantity: '1', unitPrice: '', vatRate: 0.1, vendorName: '' });
 
@@ -244,6 +250,7 @@ export default function Contracts() {
             setContractForm(prev => {
                 const newState = { ...prev, [name]: value };
                 if (name === 'company_name') newState.main_contract = '';
+                if (name === 'sub_contractor') newState.sub_contract = '';
                 return newState;
             });
         }
@@ -352,6 +359,7 @@ export default function Contracts() {
             } else {
                 const newState = { ...prev, [name]: value };
                 if (name === 'company_name') newState.main_contract = '';
+                if (name === 'sub_contractor') newState.sub_contract = '';
                 return newState;
             }
         });
@@ -443,17 +451,31 @@ export default function Contracts() {
         </div>
     );
 
-    const renderPartnerDropdown = (name, value, onChange) => (
-        <div className="relative">
-            <select name={name} value={value || ''} onChange={onChange} className={`${inputStyle} appearance-none pr-8`}>
-                <option value="">파트너사 선택</option>
-                {partnerList.map(partner => (
-                    <option key={partner.id} value={partner.name}>{partner.name}</option>
-                ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500"><ChevronDownIcon /></div>
-        </div>
-    );
+    const renderUniquePartnerDropdown = (name, value, onChange, placeholder = "업체 선택") => {
+        const uniqueNames = [...new Set(partnerList.map(p => p.name))];
+        return (
+            <div className="relative">
+                <select name={name} value={value || ''} onChange={onChange} className={`${inputStyle} appearance-none pr-8`}>
+                    <option value="">{placeholder}</option>
+                    {uniqueNames.map(partnerName => (<option key={partnerName} value={partnerName}>{partnerName}</option>))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500"><ChevronDownIcon /></div>
+            </div>
+        );
+    };
+
+    const renderSubManagerDropdown = (companyName, value, onChange) => {
+        const managers = partnerList.filter(p => p.name === companyName);
+        return (
+            <div className="relative">
+                <select name="sub_contract" value={value || ''} onChange={onChange} className={`${inputStyle} appearance-none pr-8`} disabled={!companyName}>
+                    <option value="">{companyName ? '담당자 선택' : '업체 선행 선택'}</option>
+                    {managers.map(partner => (<option key={partner.id} value={partner.rep}>{partner.rep} {partner.position ? `(${partner.position})` : ''}</option>))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500"><ChevronDownIcon /></div>
+            </div>
+        );
+    };
 
     const renderManagerDropdown = (companyName, value, onChange, nameStr = 'main_contract') => {
         const filteredCustomers = customerList.filter(c => c.company === companyName);
@@ -477,7 +499,6 @@ export default function Contracts() {
 
         if (!currentForm) return null;
         const items = currentForm.items || [];
-
         const gradientStyle = { backgroundSize: '200% 200%', animation: 'moveGradient 3s ease infinite', };
 
         return (
@@ -509,14 +530,8 @@ export default function Contracts() {
                                 <div className="col-span-1"><label className={labelStyle}>예상 합계</label><input value={formatNumber(calculateItemTotals(newItem.quantity, newItem.unitPrice, newItem.vatRate).totalAmount)} readOnly className={`${inputStyle} bg-white dark:bg-slate-700 text-right font-bold text-blue-600`}/></div>
                             </div>
                             <div className="flex justify-center items-center gap-4 mt-4 pt-4 border-t border-blue-100 dark:border-slate-700">
-                                <div className="relative group">
-                                    <div className="absolute -inset-[2px] rounded-lg bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 opacity-60 blur-sm transition duration-1000 group-hover:opacity-100 group-hover:duration-200" style={gradientStyle}></div>
-                                    <button onClick={() => setIsItemInputOpen(false)} className="relative px-6 py-2 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white rounded-md text-xs font-bold shadow-sm transition-all z-10 w-24">닫기</button>
-                                </div>
-                                <div className="relative group">
-                                    <div className="absolute -inset-[2px] rounded-lg bg-gradient-to-r from-red-500 via-purple-500 to-pink-500 opacity-70 blur-sm transition duration-1000 group-hover:opacity-100 group-hover:duration-200" style={gradientStyle}></div>
-                                    <button onClick={handleAdd} className="relative px-6 py-2 bg-white dark:bg-slate-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-700 rounded-md text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all z-10 w-24"><PlusIcon/> 추가</button>
-                                </div>
+                                <button onClick={() => setIsItemInputOpen(false)} className="relative px-6 py-2 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 hover:text-gray-900 border border-gray-300 dark:border-slate-600 rounded-md text-xs font-bold shadow-sm transition-all z-10 w-24">닫기</button>
+                                <button onClick={handleAdd} className="relative px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all z-10 w-24"><PlusIcon/> 추가</button>
                             </div>
                         </div>
                     )}
@@ -570,9 +585,9 @@ export default function Contracts() {
 
     const inputStyle = "w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-colors text-sm";
     const labelStyle = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
-    const modalContentStyle = "fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[1200px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white dark:bg-slate-800 shadow-2xl focus:outline-none z-50 overflow-y-auto border border-gray-200 dark:border-slate-700 transition-colors";
-    const fixedModalWidth = 'max-w-[800px]';
 
+    const modalContentStyle = "fixed left-[50%] top-[55%] translate-y-[-50%] max-h-[85vh] w-[90vw] max-w-[1200px] translate-x-[-50%] rounded-xl bg-white dark:bg-slate-800 shadow-2xl focus:outline-none z-50 border border-gray-200 dark:border-slate-700 transition-colors flex flex-col overflow-hidden";
+    const fixedModalWidth = 'max-w-[800px]';
     const gradientStyle = { backgroundSize: '200% 200%', animation: 'moveGradient 3s ease infinite', };
 
     return (
@@ -587,6 +602,15 @@ export default function Contracts() {
                 .react-datepicker__input-container input { width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.5rem 0.75rem; outline: none; font-size: 0.875rem; }
                 .dark .react-datepicker__input-container input { background-color: #0f172a; border-color: #475569; color: #f3f4f6; }
                 @keyframes moveGradient { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+                
+                /* [추가됨] 스크롤바 숨김 처리 */
+                .scrollbar-hide::-webkit-scrollbar {
+                    display: none;
+                }
+                .scrollbar-hide {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
             `}</style>
 
             <div
@@ -695,24 +719,22 @@ export default function Contracts() {
                     </table>
                 </div>
 
+                {/* 등록 모달 */}
                 <Dialog.Root open={isRegOpen} onOpenChange={(newOpenState) => {
                     setIsRegOpen(newOpenState);
                     if (newOpenState === false) setIsItemsExpanded(false);
                 }}>
                     <Dialog.Portal>
                         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"/>
-                        <Dialog.Content className={`${modalContentStyle} ${fixedModalWidth}`}
-                                        onPointerDownOutside={(e) => e.preventDefault()}>
-                            <div
-                                className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
-                                <Dialog.Title
-                                    className="text-xl font-bold text-gray-800 dark:text-gray-100">{isItemsExpanded ? '계약 품목 상세 관리' : '신규 계약 등록'}</Dialog.Title>
+                        <Dialog.Content className={`${modalContentStyle} ${fixedModalWidth}`} onPointerDownOutside={(e) => e.preventDefault()}>
+                            <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-shrink-0">
+                                <Dialog.Title className="text-xl font-bold text-gray-800 dark:text-gray-100">{isItemsExpanded ? '계약 품목 상세 관리' : '신규 계약 등록'}</Dialog.Title>
                                 <Dialog.Close asChild>
-                                    <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                                        <XIcon/></button>
+                                    <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><XIcon/></button>
                                 </Dialog.Close>
                             </div>
-                            <div className="p-6 space-y-4">
+
+                            <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
                                 {!isItemsExpanded && (
                                     <div className="space-y-4 transition-opacity duration-500 ease-in-out">
                                         <div className="grid grid-cols-3 gap-4">
@@ -747,8 +769,9 @@ export default function Contracts() {
                                             <div className="col-span-1"><label className={labelStyle}>계약
                                                 담당자<RequiredStar/></label>{renderManagerDropdown(contractForm.company_name, contractForm.main_contract, handleFormChange, 'main_contract')}
                                             </div>
-                                            <div className="col-span-1"><label className={labelStyle}>주 계약업체
-                                                (파트너사)<RequiredStar/></label>{renderPartnerDropdown('main_contractor', contractForm.main_contractor, handleFormChange)}
+                                            <div className="col-span-1">
+                                                <label className={labelStyle}>주 계약업체 (파트너사)<RequiredStar/></label>
+                                                {renderUniquePartnerDropdown('main_contractor', contractForm.main_contractor, handleFormChange, '파트너사 선택')}
                                             </div>
                                             <div className="col-span-1"><label className={labelStyle}>계약
                                                 일자<RequiredStar/></label>
@@ -761,13 +784,14 @@ export default function Contracts() {
                                                 종료일)<RequiredStar/></label><BusinessPeriodPicker
                                                 startDate={contractForm.start_date} endDate={contractForm.end_date}
                                                 onApply={handlePeriodApply} className={inputStyle}/></div>
-                                            <div className="col-span-2"><label className={labelStyle}>하도급
-                                                업체</label>{renderCompanyDropdown('sub_contractor', contractForm.sub_contractor, handleFormChange)}
+                                            <div className="col-span-2">
+                                                <label className={labelStyle}>하도급 업체</label>
+                                                {renderUniquePartnerDropdown('sub_contractor', contractForm.sub_contractor, handleFormChange, '하도급 업체 선택')}
                                             </div>
-                                            <div className="col-span-1"><label className={labelStyle}>하도급
-                                                담당자</label><input name="sub_contract" value={contractForm.sub_contract}
-                                                                  onChange={handleFormChange} className={inputStyle}
-                                                                  placeholder="담당자 이름"/></div>
+                                            <div className="col-span-1">
+                                                <label className={labelStyle}>하도급 담당자</label>
+                                                {renderSubManagerDropdown(contractForm.sub_contractor, contractForm.sub_contract, handleFormChange)}
+                                            </div>
                                         </div>
                                         <div onClick={() => setIsItemsExpanded(true)}
                                              className="mt-6 flex justify-between items-center cursor-pointer border border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/70 p-3 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-slate-700 shadow-sm">
@@ -781,8 +805,8 @@ export default function Contracts() {
                                 )}
                                 {isItemsExpanded && renderItemManagement({isUpdateMode: false})}
                             </div>
-                            <div
-                                className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800 rounded-b-xl">
+
+                            <div className="p-5 border-t border-gray-200 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800 flex-shrink-0">
                                 {isItemsExpanded ? (
                                     <>
                                         <div></div>
@@ -815,13 +839,12 @@ export default function Contracts() {
                     </Dialog.Portal>
                 </Dialog.Root>
 
+                {/* 수정 모달 */}
                 <Dialog.Root open={!!selectedContract} onOpenChange={setSelectedContract}>
                     <Dialog.Portal>
                         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"/>
-                        <Dialog.Content className={`${modalContentStyle} ${fixedModalWidth}`}
-                                        onPointerDownOutside={(e) => e.preventDefault()}>
-                            <div
-                                className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
+                        <Dialog.Content className={`${modalContentStyle} ${fixedModalWidth}`} onPointerDownOutside={(e) => e.preventDefault()}>
+                            <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-shrink-0">
                                 <Dialog.Title
                                     className="text-xl font-bold text-gray-800 dark:text-gray-100">{isItemsExpanded ? '품목 수정/관리' : `${selectedContractForm?.name || '계약 상세/수정'}`}</Dialog.Title>
                                 <Dialog.Close asChild>
@@ -829,7 +852,8 @@ export default function Contracts() {
                                         <XIcon/></button>
                                 </Dialog.Close>
                             </div>
-                            <div className="p-6 space-y-6">
+
+                            <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-hide">
                                 {selectedContractForm && (
                                     <div className="space-y-4">
                                         {!isItemsExpanded && (
@@ -873,8 +897,9 @@ export default function Contracts() {
                                                     <div><label
                                                         className={labelStyle}>담당자<RequiredStar/></label>{renderManagerDropdown(selectedContractForm.company_name, selectedContractForm.main_contract, handleSelectedFormChange, 'main_contract')}
                                                     </div>
-                                                    <div><label className={labelStyle}>주
-                                                        계약업체<RequiredStar/></label>{renderPartnerDropdown('main_contractor', selectedContractForm.main_contractor, handleSelectedFormChange)}
+                                                    <div>
+                                                        <label className={labelStyle}>주 계약업체<RequiredStar/></label>
+                                                        {renderUniquePartnerDropdown('main_contractor', selectedContractForm.main_contractor, handleSelectedFormChange, '파트너사 선택')}
                                                     </div>
                                                     <div className="col-span-1"><label className={labelStyle}>계약
                                                         일자<RequiredStar/></label>
@@ -890,13 +915,14 @@ export default function Contracts() {
                                                         endDate={selectedContractForm.end_date}
                                                         onApply={handleSelectedPeriodApply} className={inputStyle}/>
                                                     </div>
-                                                    <div className="col-span-2"><label className={labelStyle}>하도급
-                                                        업체</label>{renderCompanyDropdown('sub_contractor', selectedContractForm.sub_contractor, handleSelectedFormChange)}
+                                                    <div className="col-span-2">
+                                                        <label className={labelStyle}>하도급 업체</label>
+                                                        {renderUniquePartnerDropdown('sub_contractor', selectedContractForm.sub_contractor, handleSelectedFormChange, '하도급 업체 선택')}
                                                     </div>
-                                                    <div><label className={labelStyle}>하도급 담당자</label><input
-                                                        name="sub_contract" value={selectedContractForm.sub_contract}
-                                                        onChange={handleSelectedFormChange} className={inputStyle}
-                                                        placeholder="담당자 이름"/></div>
+                                                    <div>
+                                                        <label className={labelStyle}>하도급 담당자</label>
+                                                        {renderSubManagerDropdown(selectedContractForm.sub_contractor, selectedContractForm.sub_contract, handleSelectedFormChange)}
+                                                    </div>
                                                 </div>
                                                 <div onClick={() => setIsItemsExpanded(true)}
                                                      className="mt-6 flex justify-between items-center cursor-pointer border border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/70 p-3 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-slate-700 shadow-sm">
@@ -912,8 +938,9 @@ export default function Contracts() {
                                     </div>
                                 )}
                             </div>
-                            <div
-                                className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800 rounded-b-xl">
+
+                            {/* 푸터: 여백 축소(p-5) */}
+                            <div className="p-5 border-t border-gray-200 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800 flex-shrink-0">
                                 {isItemsExpanded ? (
                                     <>
                                         <div></div>

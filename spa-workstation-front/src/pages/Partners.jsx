@@ -11,7 +11,7 @@ const XIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" v
 const TrashIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>;
 const DocumentIcon = ({ className }) => <svg className={className || "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
 
-const API_PARTNER_URL = '/api/partner'; // API 주소 확인 필요
+const API_PARTNER_URL = '/api/partner';
 
 // 페이지네이션 UI 컴포넌트 (기존 유지)
 const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
@@ -59,7 +59,7 @@ export default function Partners() {
     const [partnerList, setPartnerList] = useState([]);
 
     // 입력 폼 (Partner Entity 구조 반영)
-    const [form, setForm] = useState({ name: '', rep: '', tel: '', email: '', memo: '' });
+    const [form, setForm] = useState({ name: '', rep: '', tel: '', positiion: '', work_type:'', email: '', memo: '' });
 
     useEffect(() => { fetchPartners(); }, []);
 
@@ -103,13 +103,12 @@ export default function Partners() {
     const handleRegChange = (e) => { const { name, value } = e.target; setForm(p => ({ ...p, [name]: value })); };
 
     const handleSubmit = async () => {
-        // Swal 대체 -> alert
         if (!form.name) { alert('경고: 파트너사 이름을 입력하세요.'); return; }
         try {
             await axios.post(API_PARTNER_URL, form);
             fetchPartners();
             setIsRegOpen(false);
-            setForm({ name: '', rep: '', tel: '', email: '', memo: '' });
+            setForm({ name: '', rep: '', tel: '', positiion: '', work_type:'', email: '', memo: '' });
             alert('완료: 등록되었습니다.');
         } catch { alert('오류: 등록 실패'); }
     };
@@ -155,8 +154,7 @@ export default function Partners() {
 
             <div className="p-6 max-w-7xl mx-auto min-h-screen text-gray-900 dark:text-gray-100 transition-colors duration-300">
 
-                {/* ====== 헤더 (검색창 가운데 정렬 수정) ====== */}
-                {/* justify-between 대신 justify-center를 사용하고 양쪽 요소는 absolute로 배치 */}
+                {/* ====== 헤더 ====== */}
                 <div className="relative flex items-center justify-center mb-8 h-12">
 
                     <div className="relative w-full max-w-md group z-0 h-11">
@@ -193,7 +191,7 @@ export default function Partners() {
                             <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-200">
                             <tr>
                                 <th className="px-6 py-4 text-sm font-semibold w-1/5">파트너사</th>
-                                <th className="px-6 py-4 text-sm font-semibold w-1/5">담당자</th>
+                                <th className="px-6 py-4 text-sm font-semibold w-1/5">담당자&nbsp;(직급)</th>
                                 <th className="px-6 py-4 text-sm font-semibold w-1/5">연락처</th>
                                 <th className="px-6 py-4 text-sm font-semibold w-1/5">이메일</th>
                                 <th className="px-6 py-4 text-sm font-semibold text-center w-1/5">관리</th>
@@ -235,7 +233,9 @@ export default function Partners() {
                                             </div>
                                             {p.name}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{p.rep || '-'}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                                            {p.rep ? `${p.rep}${p.position ? ` (${p.position})` : ''}` : '-'}
+                                        </td>
                                         <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{p.tel || '-'}</td>
                                         <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{p.email || '-'}</td>
                                         <td className="px-6 py-4 text-center">
@@ -272,24 +272,39 @@ export default function Partners() {
                             </div>
                             <div className="p-6 space-y-5 overflow-y-auto flex-1">
                                 <div className="grid grid-cols-12 gap-4">
-                                    <div className="col-span-12"><label className={labelStyle}>파트너사명 <span className="text-red-500">*</span></label>
-                                        <input name="name" value={form.name} onChange={handleRegChange} className={inputStyle} placeholder="업체명 입력" />
+                                    <div className="col-span-12"><label className={labelStyle}>파트너사명 <span
+                                        className="text-red-500">*</span></label>
+                                        <input name="name" value={form.name} onChange={handleRegChange}
+                                               className={inputStyle} placeholder="업체명 입력"/>
                                     </div>
                                     <div className="col-span-6"><label className={labelStyle}>담당자</label>
-                                        <input name="rep" value={form.rep} onChange={handleRegChange} className={inputStyle} />
+                                        <input name="rep" value={form.rep} onChange={handleRegChange}
+                                               className={inputStyle} placeholder="담당자 입력"/>
                                     </div>
                                     <div className="col-span-6"><label className={labelStyle}>연락처</label>
-                                        <input name="tel" value={form.tel} onChange={handleRegChange} className={inputStyle} placeholder="010-0000-0000" />
+                                        <input name="tel" value={form.tel} onChange={handleRegChange}
+                                               className={inputStyle} placeholder="010-0000-0000"/>
+                                    </div>
+                                    <div className="col-span-6"><label className={labelStyle}>직급</label>
+                                        <input name="position" value={form.position} onChange={handleRegChange}
+                                               className={inputStyle} placeholder="담당자 직급 입력"/>
+                                    </div>
+                                    <div className="col-span-6"><label className={labelStyle}>업무유형</label>
+                                        <input name="work_type" value={form.work_type} onChange={handleRegChange}
+                                               className={inputStyle} placeholder="영업, 기술지원, 회계"/>
                                     </div>
                                     <div className="col-span-12"><label className={labelStyle}>이메일</label>
-                                        <input name="email" value={form.email} onChange={handleRegChange} className={inputStyle} />
+                                        <input name="email" value={form.email} onChange={handleRegChange}
+                                               className={inputStyle} placeholder={"eamil@gmail.com"}/>
                                     </div>
                                 </div>
                                 <div><label className={labelStyle}>메모</label>
-                                    <textarea name="memo" value={form.memo} rows="4" onChange={handleRegChange} className={`${inputStyle} resize-none`}></textarea>
+                                    <textarea name="memo" value={form.memo} rows="4" onChange={handleRegChange}
+                                              className={`${inputStyle} resize-none`}></textarea>
                                 </div>
                             </div>
-                            <div className="p-5 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex justify-end gap-3 mt-auto">
+                            <div
+                                className="p-5 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex justify-end gap-3 mt-auto">
                                 <Dialog.Close asChild>
                                     <button className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">취소</button>
                                 </Dialog.Close>
@@ -313,21 +328,36 @@ export default function Partners() {
                             {editingPartner && (
                                 <div className="p-6 space-y-5 overflow-y-auto flex-1">
                                     <div className="grid grid-cols-12 gap-4">
-                                        <div className="col-span-12"><label className={labelStyle}>파트너사명 <span className="text-red-500">*</span></label>
-                                            <input name="name" value={editingPartner.name} onChange={handleEditChange} className={inputStyle}/>
+                                        <div className="col-span-12"><label className={labelStyle}>파트너사명 <span
+                                            className="text-red-500">*</span></label>
+                                            <input name="name" value={editingPartner.name} onChange={handleEditChange}
+                                                   className={inputStyle}/>
                                         </div>
                                         <div className="col-span-6"><label className={labelStyle}>담당자</label>
-                                            <input name="rep" value={editingPartner.rep || ''} onChange={handleEditChange} className={inputStyle}/>
+                                            <input name="rep" value={editingPartner.rep || ''}
+                                                   onChange={handleEditChange} className={inputStyle}/>
                                         </div>
                                         <div className="col-span-6"><label className={labelStyle}>연락처</label>
-                                            <input name="tel" value={editingPartner.tel || ''} onChange={handleEditChange} className={inputStyle}/>
+                                            <input name="tel" value={editingPartner.tel || ''}
+                                                   onChange={handleEditChange} className={inputStyle}/>
+                                        </div>
+                                        <div className="col-span-6"><label className={labelStyle}>직급</label>
+                                            <input name="position" value={editingPartner.position || ''}
+                                                   onChange={handleEditChange} className={inputStyle}/>
+                                        </div>
+                                        <div className="col-span-6"><label className={labelStyle}>업무유형</label>
+                                            <input name="work_type" value={editingPartner.work_type || ''}
+                                                   onChange={handleEditChange} className={inputStyle}/>
                                         </div>
                                         <div className="col-span-12"><label className={labelStyle}>이메일</label>
-                                            <input name="email" value={editingPartner.email || ''} onChange={handleEditChange} className={inputStyle}/>
+                                            <input name="email" value={editingPartner.email || ''}
+                                                   onChange={handleEditChange} className={inputStyle}/>
                                         </div>
                                     </div>
                                     <div><label className={labelStyle}>메모</label>
-                                        <textarea name="memo" value={editingPartner.memo || ''} onChange={handleEditChange} rows="4" className={`${inputStyle} resize-none`}></textarea>
+                                        <textarea name="memo" value={editingPartner.memo || ''}
+                                                  onChange={handleEditChange} rows="4"
+                                                  className={`${inputStyle} resize-none`}></textarea>
                                     </div>
                                 </div>
                             )}

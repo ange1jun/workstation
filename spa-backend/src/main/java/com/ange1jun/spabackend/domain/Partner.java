@@ -24,6 +24,14 @@ public class Partner {
     @Column(length = 50)
     private String tel;
 
+    // 직급
+    @Column(length = 50)
+    private String position;
+
+    // 직급
+    @Column(length = 50)
+    private String work_type;
+
     // 이메일
     @Column(length = 100)
     private String email;

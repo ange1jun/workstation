@@ -3,7 +3,7 @@ package com.ange1jun.spabackend.controller;
 import com.ange1jun.spabackend.domain.Partner;
 import com.ange1jun.spabackend.dto.PartnerRequest;
 import com.ange1jun.spabackend.dto.PartnerResponse;
-import com.ange1jun.spabackend.service.PartnerService;
+import com.ange1jun.spabackend.serivce.PartnerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class PartnerController {
 
     private final PartnerService partnerService;
+
 
     @GetMapping
     public ResponseEntity<List<PartnerResponse>> getPartners() {

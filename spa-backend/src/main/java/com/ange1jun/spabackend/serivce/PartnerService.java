@@ -1,4 +1,4 @@
-package com.ange1jun.spabackend.service; // 혹은 com.ange1jun.spabackend.serivce (기존 오타 유지 시)
+package com.ange1jun.spabackend.serivce;// 혹은 com.ange1jun.spabackend.serivce (기존 오타 유지 시)
 
 import com.ange1jun.spabackend.domain.Partner;
 import com.ange1jun.spabackend.dto.PartnerRequest;
@@ -51,6 +51,8 @@ public class PartnerService {
         partner.setName(request.getName());
         partner.setRep(request.getRep());
         partner.setTel(request.getTel());
+        partner.setPosition(request.getPosition());
+        partner.setWork_type(request.getWork_type());
         partner.setEmail(request.getEmail());
         partner.setMemo(request.getMemo());
     }

@@ -133,12 +133,23 @@ const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => 
     );
 };
 
-// [수정] 오늘 날짜를 YYYY-MM-DD 형식으로 반환하는 함수 (로컬 타임 기준)
+// 오늘 날짜를 YYYY-MM-DD 형식으로 반환하는 함수 (로컬 타임 기준)
 const getTodayDate = () => {
     const date = new Date();
     const offset = date.getTimezoneOffset() * 60000;
     const localISOTime = new Date(date.getTime() - offset).toISOString().split('T')[0];
     return localISOTime;
+};
+
+const formatDateTime = (dateInput) => {
+    if (!dateInput) return '';
+    const d = new Date(dateInput);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
 };
 
 export default function Sales() {
@@ -297,6 +308,9 @@ export default function Sales() {
         if (!historyInput.trim() || !selectedSale) return;
         try {
             await axios.post(`${API_SALES_URL}/${selectedSale.id}/history`, { content: historyInput });
+
+            const now = new Date().toISOString();
+
             const today = new Date().toISOString().split('T')[0];
             const newItem = { id: Date.now(), recordedDate: today, content: historyInput };
             setHistoryList([newItem, ...historyList]);
@@ -650,14 +664,24 @@ export default function Sales() {
                                                         <div className="relative z-10 mt-1.5 w-3 h-3 rounded-full bg-white dark:bg-slate-800 border-2 border-indigo-500 shadow-[0_0_0_2px_rgba(255,255,255,1)] dark:shadow-[0_0_0_2px_rgba(30,41,59,1)] flex-shrink-0"></div>
                                                         <div className="flex-1 bg-gray-50/50 dark:bg-slate-700/30 p-2.5 rounded-lg border border-gray-100 dark:border-slate-700/50 hover:border-blue-200 dark:hover:border-slate-500 transition-colors">
                                                             <div className="flex justify-between items-start mb-1">
-                                                                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">{item.recordedDate}</span>
-                                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <span
+                                                                    className="text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                                                                    {formatDateTime(item.recordedDate)}
+                                                                </span>
+                                                                <div
+                                                                    className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                     {editingHistoryId === item.id ? (
-                                                                        <button onClick={() => saveEditHistory(item.id)} className="text-green-600 hover:bg-green-100 p-1 rounded"><CheckIcon/></button>
+                                                                        <button onClick={() => saveEditHistory(item.id)}
+                                                                                className="text-green-600 hover:bg-green-100 p-1 rounded">
+                                                                            <CheckIcon/></button>
                                                                     ) : (
-                                                                        <button onClick={() => startEditHistory(item)} className="text-blue-600 hover:bg-blue-100 p-1 rounded"><PencilIcon/></button>
+                                                                        <button onClick={() => startEditHistory(item)}
+                                                                                className="text-blue-600 hover:bg-blue-100 p-1 rounded">
+                                                                            <PencilIcon/></button>
                                                                     )}
-                                                                    <button onClick={() => handleDeleteHistory(item.id)} className="text-red-600 hover:bg-red-100 p-1 rounded"><TrashIcon/></button>
+                                                                    <button onClick={() => handleDeleteHistory(item.id)}
+                                                                            className="text-red-600 hover:bg-red-100 p-1 rounded">
+                                                                        <TrashIcon/></button>
                                                                 </div>
                                                             </div>
                                                             {editingHistoryId === item.id ? (

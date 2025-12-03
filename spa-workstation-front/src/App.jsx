@@ -16,6 +16,7 @@ import Sales from "./pages/Sales.jsx";
 import Products from "./pages/Products.jsx";
 import MainLayout from './components/MainLayout.jsx';
 import Contracts from "./pages/Contracts.jsx";
+import VehicleLog from "./pages/VehicleLog.jsx"
 
 
 // 임시 페이지 컴포넌트
@@ -92,6 +93,7 @@ function App() {
                             <Route path="/sales" element={<Sales />} />
                             <Route path="/contracts" element={<Contracts/>} />
                             <Route path="/products" element={<Products/>} />
+                            <Route path="/vehicle-log" element={<VehicleLog />} />
                         </Route>
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>

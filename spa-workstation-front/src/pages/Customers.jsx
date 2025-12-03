@@ -157,7 +157,7 @@ export default function Customers() {
     const handleCustomerSubmit = async () => {
         if (!customerForm.companyName) { window.alert('경고: 고객사를 선택하세요.'); return; }
         try {
-            const payload = { ...customerForm, company: customerForm.companyName, contact: customerForm.mobile, responsibilities: customerForm.responsibilities.join(',') };
+            const payload = { ...customerForm, company: customerForm.companyName, contact: customerForm.contact, responsibilities: customerForm.responsibilities.join(',') };
             await axios.post(API_CUSTOMER_URL, payload); fetchCustomersOnly(); setIsCustomerRegOpen(false);
             setCustomerForm({ name: '', companyName: '', department: '', part: '', position: '', email: '', phone: '', contact: '', memo: '', responsibilities: [] });
             window.alert('완료: 고객이 등록되었습니다.');
@@ -426,13 +426,13 @@ export default function Customers() {
                             <div className="p-6 space-y-5 overflow-y-auto flex-1">
                                 <div className="grid grid-cols-12 gap-4">
                                     <div className="col-span-6"><label className={labelStyle}>고객명</label><input
-                                        name="name" onChange={handleCustomerRegChange} className={inputStyle}/></div>
+                                        name="name" onChange={handleCustomerRegChange} className={inputStyle} placeholder={'고객명 입력'}/></div>
                                     <div className="col-span-6"><label className={labelStyle}>고객사</label>
                                         <div className="relative">
                                             <select name="companyName" onChange={handleCustomerRegChange}
                                                     className={`${inputStyle} appearance-none pr-8`}
                                                     value={customerForm.companyName}>
-                                                <option value="">선택</option>
+                                                <option value="">고객사 선택</option>
                                                 {companyList.map(c => <option key={c.id}
                                                                               value={c.name}>{c.name}</option>)}
                                             </select>
@@ -442,24 +442,24 @@ export default function Customers() {
                                         </div>
                                     </div>
                                     <div className="col-span-4"><label className={labelStyle}>부서</label><input
-                                        name="department" onChange={handleCustomerRegChange} className={inputStyle}/>
+                                        name="department" onChange={handleCustomerRegChange} className={inputStyle} placeholder={'부서명 입력'}/>
                                     </div>
                                     <div className="col-span-4"><label className={labelStyle}>파트</label><input
-                                        name="part" onChange={handleCustomerRegChange} className={inputStyle}/></div>
+                                        name="part" onChange={handleCustomerRegChange} className={inputStyle} placeholder={'부서 내 파트명 입력'}/></div>
                                     <div className="col-span-4"><label className={labelStyle}>직급</label><input
-                                        name="position" onChange={handleCustomerRegChange} className={inputStyle}/>
+                                        name="position" onChange={handleCustomerRegChange} className={inputStyle} placeholder={'직급 입력'}/>
                                     </div>
                                     <div className="col-span-6"><label className={labelStyle}>이메일</label><input
-                                        name="email" onChange={handleCustomerRegChange} className={inputStyle}/></div>
+                                        name="email" onChange={handleCustomerRegChange} className={inputStyle} placeholder={'email@gmail.com'}/></div>
                                     <div className="col-span-6"><label className={labelStyle}>연락처</label><input
-                                        name="contact" onChange={handleCustomerRegChange} className={inputStyle}/></div>
+                                        name="contact" onChange={handleCustomerRegChange} className={inputStyle} placeholder={'010-1234-1234'}/></div>
                                 </div>
                                 <div><label className={labelStyle}>담당 업무</label>
                                     <div className="flex gap-2 mb-3">
                                         <div className="relative flex-1"><input list="tasks" value={taskInput}
                                                                                 onChange={(e) => setTaskInput(e.target.value)}
                                                                                 className={`${inputStyle} w-full`}
-                                                                                placeholder="업무 입력 후 추가"/>
+                                                                                placeholder="업무 입력 후 '추가' 버튼으로 추가"/>
                                             <datalist id="tasks">{allUniqueTasks.map((t, i) => <option key={i}
                                                                                                        value={t}/>)}</datalist>
                                         </div>
@@ -479,7 +479,7 @@ export default function Customers() {
                                 </div>
                                 <div><label className={labelStyle}>메모</label><textarea name="memo" rows="3"
                                                                                        onChange={handleCustomerRegChange}
-                                                                                       className={`${inputStyle} resize-none`}></textarea>
+                                                                                       className={`${inputStyle} resize-none`} placeholder={'비고 및 기타 메모사항 입력'}></textarea>
                                 </div>
                             </div>
                             <div
