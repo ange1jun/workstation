@@ -42,7 +42,7 @@ services:
       MARIADB_USER: admin
       MARIADB_PASSWORD: admin
     volumes:
-      - ./data/db:/var/lib/mysql
+      - /var/www/workstation_db:/var/lib/mysql
     healthcheck:
       test: ["CMD-SHELL", "mariadb -u$$MARIADB_USER -p$$MARIADB_PASSWORD -e \"SELECT 1\""]
       interval: 10s
