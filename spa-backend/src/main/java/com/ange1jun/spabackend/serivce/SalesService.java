@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -25,7 +26,6 @@ public class SalesService {
         return salesRepository.findAll();
     }
 
-    // [추가] ID로 단건 조회 (Controller에서 상세 조회 및 이력 추가 시 사용)
     @Transactional(readOnly = true)
     public Sales findSalesById(Long id) {
         return salesRepository.findById(id)
@@ -56,20 +56,15 @@ public class SalesService {
 
     @Transactional
     public void addHistory(Long salesId, SalesHistoryRequest reqDto) {
-        // 1. 부모 엔티티(Sales) 조회
         Sales sales = findSalesById(salesId);
 
-        // 2. 자식 엔티티(SalesHistory) 생성
         SalesHistory history = new SalesHistory();
         history.setContent(reqDto.getContent());
-        history.setRecordedDate(new Date()); // 현재 서버 시간 입력
+        history.setRecordedDate(LocalDateTime.now());
 
-        // 3. 연관관계 설정 (Sales 엔티티의 편의 메서드 사용)
         sales.addHistory(history);
 
-        // 4. 저장 (Cascade 설정이 되어 있다면 sales가 저장될 때 history도 같이 저장됨)
-        // 명시적으로 저장하려면 아래 주석 해제 (JPA Dirty Checking으로 인해 생략 가능)
-        // salesRepository.save(sales);
+        salesRepository.save(sales);
     }
 
     @Transactional
@@ -77,6 +72,8 @@ public class SalesService {
         SalesHistory history = salesHistoryRepository.findById(historyId)
                 .orElseThrow(() -> new IllegalArgumentException("이력을 찾을 수 없습니다. ID=" + historyId));
         history.setContent(content);
+
+        history.setRecordedDate(LocalDateTime.now());
     }
 
     @Transactional

@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Entity
@@ -21,11 +24,10 @@ public class SalesHistory {
     @Column(nullable = false)
     private String content;
 
-    @Column(name = "recorded_date", nullable = false)
-    @Temporal(TemporalType.DATE)
-    private Date recordedDate;
+    @LastModifiedDate
+    @Column(name = "recorded_date", nullable = false) // updatable = false 제거!
+    private LocalDateTime recordedDate;
 
-    // [중요] Sales와 다대일 관계 설정
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sales_id")
     private Sales sales;

@@ -307,17 +307,23 @@ export default function Sales() {
     const handleAddHistory = async () => {
         if (!historyInput.trim() || !selectedSale) return;
         try {
+            // 서버 전송
             await axios.post(`${API_SALES_URL}/${selectedSale.id}/history`, { content: historyInput });
 
+            // [수정됨] 시간 정보를 포함한 전체 ISO 문자열 사용
             const now = new Date().toISOString();
 
-            const today = new Date().toISOString().split('T')[0];
-            const newItem = { id: Date.now(), recordedDate: today, content: historyInput };
+            // 화면에 즉시 반영할 임시 데이터 생성 (recordedDate에 now 적용)
+            const newItem = { id: Date.now(), recordedDate: now, content: historyInput };
+
             setHistoryList([newItem, ...historyList]);
             setHistoryInput('');
-            fetchSalesOnly();
+
+            // 확실한 데이터 동기화를 위해 목록 갱신 (선택 사항)
+            // fetchSalesOnly();
         } catch (error) { window.alert("이력 저장 실패"); }
     };
+
 
     const handleDeleteHistory = async (historyId) => {
         if (!window.confirm("이 항목을 삭제하시겠습니까?")) return;
@@ -333,12 +339,39 @@ export default function Sales() {
         setTempHistoryContent(history.content);
     };
 
+    const getRelativeTime = (dateString) => {
+        if (!dateString) return '-';
+
+        // UTC/Local 시간차 문제 방지를 위해 Date 객체로 변환하여 계산
+        const now = new Date();
+        const target = new Date(dateString);
+        const diffMS = now - target;
+
+        // 초 단위 변환
+        const diffSec = Math.floor(diffMS / 1000);
+
+        if (diffSec < 60) return '방금 전';
+
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin}분 전`;
+
+        const diffHour = Math.floor(diffMin / 60);
+        if (diffHour < 24) return `${diffHour}시간 전`;
+
+        const diffDay = Math.floor(diffHour / 24);
+        return `${diffDay}일 전`;
+    };
+
     const saveEditHistory = async (historyId) => {
         try {
             await axios.put(`${API_SALES_URL}/history/${historyId}`, { content: tempHistoryContent });
-            setHistoryList(prev => prev.map(h => h.id === historyId ? { ...h, content: tempHistoryContent } : h));
+            const now = new Date().toISOString();
+            setHistoryList(prev => prev.map(h =>
+                h.id === historyId
+                    ? { ...h, content: tempHistoryContent, recordedDate: now }
+                    : h
+            ));
             setEditingHistoryId(null);
-            fetchSalesOnly();
         } catch (error) { window.alert("수정 실패"); }
     };
 
@@ -437,34 +470,49 @@ export default function Sales() {
                 .dark .timeline-scroll::-webkit-scrollbar-thumb { background: #475569; }
             `}</style>
 
-            <div className="p-6 max-w-7xl mx-auto min-h-screen text-gray-900 dark:text-gray-100 transition-colors duration-300">
+            <div
+                className="p-6 max-w-7xl mx-auto min-h-screen text-gray-900 dark:text-gray-100 transition-colors duration-300">
 
                 {/* ====== 헤더 영역 ====== */}
                 <div className="relative flex items-center justify-center mb-8 h-12">
                     <div className="absolute left-0 top-0 h-full flex items-center gap-2">
                         {filterOptions.map((opt) => (
-                            <button key={opt.id} onClick={() => setFilterPriority(opt.id)} className={getFilterButtonClass(opt.id, filterPriority === opt.id)}>{opt.label}</button>
+                            <button key={opt.id} onClick={() => setFilterPriority(opt.id)}
+                                    className={getFilterButtonClass(opt.id, filterPriority === opt.id)}>{opt.label}</button>
                         ))}
                     </div>
                     <div className="relative w-full max-w-md group z-0 h-11">
                         <div className="absolute -inset-[2px] rounded-lg bg-gradient-to-r
                         from-violet-500
                         via-stone-500
-                        to-pink-500 opacity-70 blur-sm transition duration-1000 group-hover:opacity-100 group-hover:duration-200" style={gradientStyle}></div>
-                        <div className="relative flex items-center bg-white dark:bg-slate-800 rounded-lg p-[1px] h-full">
-                            <svg className="absolute left-3 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                            <input type="text" className="w-full pl-10 pr-4 h-full bg-transparent border-transparent rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-0 relative z-10" placeholder="영업명 검색" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
+                        to-pink-500 opacity-70 blur-sm transition duration-1000 group-hover:opacity-100 group-hover:duration-200"
+                             style={gradientStyle}></div>
+                        <div
+                            className="relative flex items-center bg-white dark:bg-slate-800 rounded-lg p-[1px] h-full">
+                            <svg className="absolute left-3 w-5 h-5 text-gray-400 pointer-events-none" fill="none"
+                                 stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <input type="text"
+                                   className="w-full pl-10 pr-4 h-full bg-transparent border-transparent rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-0 relative z-10"
+                                   placeholder="영업명 검색" value={searchTerm}
+                                   onChange={(e) => setSearchTerm(e.target.value)}/>
                         </div>
                     </div>
                     <div className="absolute right-0 flex-shrink-0">
-                        <button onClick={() => setIsRegOpen(true)} className="h-11 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors shadow-sm text-sm font-medium whitespace-nowrap"><PlusIcon/> <span>영업 건 등록</span></button>
+                        <button onClick={() => setIsRegOpen(true)}
+                                className="h-11 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors shadow-sm text-sm font-medium whitespace-nowrap">
+                            <PlusIcon/> <span>영업 건 등록</span></button>
                     </div>
                 </div>
 
                 {/* ====== 메인 테이블 ====== */}
-                <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 overflow-x-auto flex flex-col">
+                <div
+                    className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 overflow-x-auto flex flex-col">
                     <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
-                        <thead className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-200">
+                        <thead
+                            className="bg-gray-50 dark:bg-slate-700 border-b border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-200">
                         <tr>
                             <th className="px-6 py-4 text-sm font-semibold w-[10%] text-center whitespace-nowrap">중요도</th>
                             <th className="px-6 py-4 text-sm font-semibold w-[20%] whitespace-nowrap">제목</th>
@@ -472,19 +520,21 @@ export default function Sales() {
                             <th className="px-6 py-4 text-sm font-semibold w-[15%] whitespace-nowrap">기간</th>
                             <th className="px-6 py-4 text-sm font-semibold w-[10%] text-center whitespace-nowrap">상태</th>
                             <th className="px-6 py-4 text-sm font-semibold w-[15%] whitespace-nowrap">진행률</th>
-                            <th className="px-6 py-4 text-sm font-semibold w-[10%] text-center whitespace-nowrap">관리</th>
+                            {/* [변경] 관리 -> 최근 업데이트 */}
+                            <th className="px-6 py-4 text-sm font-semibold w-[10%] text-center whitespace-nowrap">최근
+                                업데이트
+                            </th>
                         </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
                         {isLoading ? (
-                            <TableLoader colSpan={7} />
+                            <TableLoader colSpan={7}/>
                         ) : paginatedSales.length === 0 ? (
                             <tr>
-                                <td colSpan="8" className="px-6">
+                                <td colSpan="7" className="px-6"> {/* colspan 수정 */}
                                     <div
                                         className="h-[60vh] flex flex-col items-center justify-center gap-4 text-gray-400 dark:text-gray-500">
                                         <div className="bg-gray-50 dark:bg-slate-700/50 p-6 rounded-full">
-                                            {/* DocumentIcon을 크게 표시 */}
                                             <DocumentIcon className="w-10 h-10 opacity-50"/>
                                         </div>
                                         <div className="text-center">
@@ -497,10 +547,13 @@ export default function Sales() {
                             </tr>
                         ) : (
                             paginatedSales.map(item => {
-                                let latestHistory = "-";
+                                let latestHistoryContent = "-";
+                                let latestHistoryDate = null; // 날짜 저장용 변수
+
                                 if (item.histories && item.histories.length > 0) {
                                     const sorted = [...item.histories].sort((a, b) => b.id - a.id || new Date(b.recordedDate) - new Date(a.recordedDate));
-                                    latestHistory = sorted[0].content;
+                                    latestHistoryContent = sorted[0].content;
+                                    latestHistoryDate = sorted[0].recordedDate; // 최신 기록 날짜 가져오기
                                 }
 
                                 return (
@@ -512,23 +565,31 @@ export default function Sales() {
                                                 className={`px-2 py-1 text-xs font-semibold rounded-full ${priorityMap[item.priority]?.class || ''}`}>{priorityMap[item.priority]?.label}</span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="truncate min-w-0 block font-medium text-gray-900 dark:text-gray-100" title={item.title}>{item.title}</div>
+                                            <div
+                                                className="truncate min-w-0 block font-medium text-gray-900 dark:text-gray-100"
+                                                title={item.title}>{item.title}</div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="truncate min-w-0 block text-sm text-gray-500 dark:text-gray-400" title={latestHistory}>{latestHistory}</div>
+                                            <div
+                                                className="truncate min-w-0 block text-sm text-gray-500 dark:text-gray-400"
+                                                title={latestHistoryContent}>{latestHistoryContent}</div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">{item.start_date} ~ {item.end_date}</td>
                                         <td className="px-6 py-4 text-center whitespace-nowrap flex justify-center">
-                                            <AnimatedStatusBadge status={item.status} />
+                                            <AnimatedStatusBadge status={item.status}/>
                                         </td>
-                                        <td className="px-6 py-4 align-middle" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                                        <td className="px-6 py-4 align-middle" onMouseDown={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center gap-3 w-full max-w-[160px]">
-                                                <CustomSlider value={item.progress} onChange={(e) => handleTableSliderChange(item.id, e.target.value)} onCommit={(val) => handleTableSliderCommit(item.id, val)}/>
-                                                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 w-9 text-right font-mono">{item.progress}%</span>
+                                                <CustomSlider value={item.progress}
+                                                              onChange={(e) => handleTableSliderChange(item.id, e.target.value)}
+                                                              onCommit={(val) => handleTableSliderCommit(item.id, val)}/>
+                                                <span
+                                                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 w-9 text-right font-mono">{item.progress}%</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-center whitespace-nowrap">
-                                            <button onClick={(e) => handleDelete(e, item.id)} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><TrashIcon/></button>
+                                        <td className="px-6 py-4 text-center whitespace-nowrap text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                            {getRelativeTime(latestHistoryDate)}
                                         </td>
                                     </tr>
                                 );
@@ -537,7 +598,8 @@ export default function Sales() {
                         </tbody>
                     </table>
                 </div>
-                <Pagination totalItems={filteredSales.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
+                <Pagination totalItems={filteredSales.length} itemsPerPage={itemsPerPage} currentPage={currentPage}
+                            onPageChange={setCurrentPage}/>
             </div>
 
             {/* 등록 모달 */}
@@ -545,41 +607,65 @@ export default function Sales() {
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"/>
                     <Dialog.Content className={modalContentStyle}>
-                        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
-                            <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">영업 건 등록</Dialog.Title>
-                            <Dialog.Close asChild><button className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><XIcon/></button></Dialog.Close>
+                        <div
+                            className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+                            <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">영업 건
+                                등록</Dialog.Title>
+                            <Dialog.Close asChild>
+                                <button
+                                    className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                                    <XIcon/></button>
+                            </Dialog.Close>
                         </div>
                         <div className="p-6 space-y-4 overflow-y-auto flex-1">
                             <div><label className={labelStyle}>제목 <span className="text-red-500">*</span></label>
-                                <input name="title" value={form.title} onChange={handleRegChange} className={inputStyle} placeholder="영업 건 제목" /></div>
+                                <input name="title" value={form.title} onChange={handleRegChange} className={inputStyle}
+                                       placeholder="영업 건 제목"/></div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className={labelStyle}>중요도</label>
-                                    <select name="priority" value={form.priority} onChange={handleRegChange} className={inputStyle}>
-                                        <option value="LOW">낮음</option><option value="MEDIUM">보통</option><option value="HIGH">높음</option>
+                                    <select name="priority" value={form.priority} onChange={handleRegChange}
+                                            className={inputStyle}>
+                                        <option value="LOW">낮음</option>
+                                        <option value="MEDIUM">보통</option>
+                                        <option value="HIGH">높음</option>
                                     </select></div>
                                 <div><label className={labelStyle}>진행 상태</label>
-                                    <select name="status" value={form.status} onChange={handleRegChange} className={inputStyle}>
-                                        <option value="SCHEDULED">예정</option><option value="IN_PROGRESS">진행중</option><option value="COMPLETED">완료</option>
+                                    <select name="status" value={form.status} onChange={handleRegChange}
+                                            className={inputStyle}>
+                                        <option value="SCHEDULED">예정</option>
+                                        <option value="IN_PROGRESS">진행중</option>
+                                        <option value="COMPLETED">완료</option>
                                     </select></div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className={labelStyle}>시작일</label>
-                                    <input type="date" name="start_date" value={form.start_date} onChange={handleRegChange} className={inputStyle} /></div>
+                                    <input type="date" name="start_date" value={form.start_date}
+                                           onChange={handleRegChange} className={inputStyle}/></div>
                                 <div><label className={labelStyle}>종료일</label>
-                                    <input type="date" name="end_date" value={form.end_date} onChange={handleRegChange} className={inputStyle} /></div>
+                                    <input type="date" name="end_date" value={form.end_date} onChange={handleRegChange}
+                                           className={inputStyle}/></div>
                             </div>
                             <div>
-                                <label className={`${labelStyle} flex justify-between`}><span>진행률</span><span className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{form.progress}%</span></label>
+                                <label className={`${labelStyle} flex justify-between`}><span>진행률</span><span
+                                    className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{form.progress}%</span></label>
                                 <div className="mt-2 px-1">
-                                    <CustomSlider name="progress" value={form.progress} onChange={handleRegChange} />
+                                    <CustomSlider name="progress" value={form.progress} onChange={handleRegChange}/>
                                 </div>
                             </div>
                             <div><label className={labelStyle}>세부사항</label>
-                                <textarea name="content" value={form.content} rows="3" onChange={handleRegChange} className={`${inputStyle} resize-none`}></textarea></div>
+                                <textarea name="content" value={form.content} rows="3" onChange={handleRegChange}
+                                          className={`${inputStyle} resize-none`}></textarea></div>
                         </div>
-                        <div className="p-5 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex justify-end gap-3 mt-auto">
-                            <Dialog.Close asChild><button className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">취소</button></Dialog.Close>
-                            <button onClick={handleSubmit} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">등록하기</button>
+                        <div
+                            className="p-5 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex justify-end gap-3 mt-auto">
+                            <Dialog.Close asChild>
+                                <button
+                                    className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">취소
+                                </button>
+                            </Dialog.Close>
+                            <button onClick={handleSubmit}
+                                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">등록하기
+                            </button>
                         </div>
                     </Dialog.Content>
                 </Dialog.Portal>
@@ -590,9 +676,15 @@ export default function Sales() {
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"/>
                     <Dialog.Content className={modalContentStyle}>
-                        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 shrink-0">
-                            <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">상세 정보</Dialog.Title>
-                            <Dialog.Close asChild><button className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><XIcon/></button></Dialog.Close>
+                        <div
+                            className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 shrink-0">
+                            <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">상세
+                                정보</Dialog.Title>
+                            <Dialog.Close asChild>
+                                <button
+                                    className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                                    <XIcon/></button>
+                            </Dialog.Close>
                         </div>
 
                         {editingSale && (
@@ -604,12 +696,16 @@ export default function Sales() {
                                         <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                             <span className="w-1 h-4 bg-blue-500 rounded-full"></span> 기본 정보
                                         </h3>
-                                        <div><label className={labelStyle}>제목 <span className="text-red-500">*</span></label>
-                                            <input name="title" value={editingSale.title} onChange={handleEditChange} className={inputStyle} /></div>
+                                        <div><label className={labelStyle}>제목 <span
+                                            className="text-red-500">*</span></label>
+                                            <input name="title" value={editingSale.title} onChange={handleEditChange}
+                                                   className={inputStyle}/></div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div><label className={labelStyle}>중요도</label>
-                                                <select name="priority" value={editingSale.priority} onChange={handleEditChange} className={inputStyle}>
-                                                    <option value="LOW">낮음</option><option value="MEDIUM">보통</option><option value="HIGH">높음</option>
+                                                <select name="priority" value={editingSale.priority}
+                                                        onChange={handleEditChange} className={inputStyle}>
+                                                    <option value="LOW">낮음</option>
+                                                    <option value="MEDIUM">보통</option><option value="HIGH">높음</option>
                                                 </select></div>
                                             <div><label className={labelStyle}>진행 상태</label>
                                                 <select name="status" value={editingSale.status} onChange={handleEditChange} className={inputStyle}>

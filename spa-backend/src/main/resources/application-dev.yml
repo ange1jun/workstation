@@ -7,23 +7,21 @@ spring:
       on-profile: dev
 
   datasource:
-    # H2 인메모리 DB (설치 불필요, 실행 시 생성)
-    url: jdbc:h2:mem:workstation_db;MODE=MariaDB;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    # 로컬 MariaDB 연결 (URL, 포트, DB이름 확인 필요)
+    url: jdbc:mariadb://localhost:3306/workstation_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    driver-class-name: org.mariadb.jdbc.Driver
+    username: root    # 로컬 DB 계정 (설정에 맞게 변경)
+    password: admin  # 로컬 DB 비밀번호 (설정에 맞게 변경)
 
   jpa:
     hibernate:
-      ddl-auto: create-drop # 껏다 켜면 초기화 (개발 편의)
+      # update: 데이터는 유지하되 스키마 변경사항만 반영 (추천)
+      # create: 매 실행 시 테이블을 drop 하고 새로 생성 (H2와 비슷한 동작을 원할 경우)
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-    database-platform: org.hibernate.dialect.H2Dialect
+        dialect: org.hibernate.dialect.MariaDBDialect
 
-  # H2 콘솔 접속용 (http://localhost:8889/h2-console)
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+  # H2 관련 설정(spring.h2.console)은 MariaDB 사용 시 불필요하므로 삭제
